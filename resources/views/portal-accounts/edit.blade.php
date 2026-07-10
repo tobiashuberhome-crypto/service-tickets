@@ -25,6 +25,6 @@
           style="max-width:640px;">
         @csrf
         @method('DELETE')
-        <button class="btn" type="submit" style="background:#dc2626; color:#fff;">Konto löschen</button>
+        <button class="btn danger" type="submit">Konto löschen</button>
     </form>
 @endsection
