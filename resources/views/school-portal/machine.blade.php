@@ -9,7 +9,7 @@
                 <p class="muted">{{ $machine->manufacturer_snapshot }}{{ $machine->serial_number ? ' · SN ' . $machine->serial_number : '' }}</p>
             @endif
         </div>
-        <a class="btn" href="{{ route('school-portal.tickets.create', $machine) }}" style="background:#dc2626; color:#fff;">Problem melden</a>
+        <a class="btn" href="{{ route('school-portal.tickets.create', $machine) }}">Problem melden</a>
     </div>
 
     <div class="panel panel-body" style="margin-bottom:1rem;">

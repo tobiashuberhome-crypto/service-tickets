@@ -46,7 +46,7 @@
                 </div>
             </div>
 
-            <button class="btn" type="submit" style="background:#dc2626; color:#fff;">Meldung senden</button>
+            <button class="btn" type="submit">Meldung senden</button>
         </form>
     </div>
 @endsection

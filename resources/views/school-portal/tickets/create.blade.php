@@ -46,7 +46,7 @@
             </div>
 
             <div style="display:flex; gap:.5rem;">
-                <button class="btn" type="submit" style="background:#dc2626; color:#fff;">Ticket absenden</button>
+                <button class="btn" type="submit">Ticket absenden</button>
                 <a class="btn secondary" href="{{ route('school-portal.machines.show', $machine) }}">Abbrechen</a>
             </div>
         </form>
