@@ -33,6 +33,7 @@ Route::get('/kundenportal', [CustomerPortalController::class, 'home'])->name('cu
 Route::post('/kundenportal/anfrage', [CustomerPortalController::class, 'storeRequest'])->name('customer-portal.requests.store');
 Route::get('/kundenportal/login', [CustomerPortalController::class, 'login'])->name('customer-portal.login');
 Route::post('/kundenportal/login', [CustomerPortalController::class, 'sendMagicLink'])->name('customer-portal.magic.send');
+Route::post('/kundenportal/login/password', [CustomerPortalController::class, 'loginWithPassword'])->name('customer-portal.password.login');
 Route::get('/kundenportal/magic/{token}', [CustomerPortalController::class, 'consumeMagicLink'])->name('customer-portal.magic');
 Route::post('/kundenportal/logout', [CustomerPortalController::class, 'logout'])->name('customer-portal.logout');
 Route::middleware('customer.portal')->group(function (): void {
@@ -136,5 +137,4 @@ Route::middleware('admin.auth')->group(function (): void {
 
     Route::resource('portal-accounts', PortalAccountController::class)->only(['index', 'create', 'store', 'edit', 'update', 'destroy']);
 });
-
 

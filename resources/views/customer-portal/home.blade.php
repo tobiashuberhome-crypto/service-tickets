@@ -4,9 +4,9 @@
     <div class="page-header">
         <div>
             <h1>Kundenportal</h1>
-            <p class="muted">Senden Sie eine Anfrage zur Freischaltung oder melden Sie sich mit einem Magic Link an.</p>
+            <p class="muted">Senden Sie eine Anfrage zur Freischaltung oder melden Sie sich mit E-Mail und Passwort an.</p>
         </div>
-        <a class="btn secondary" href="{{ route('customer-portal.login') }}">Magic Link anfordern</a>
+        <a class="btn secondary" href="{{ route('customer-portal.login') }}">Zum Login</a>
     </div>
 
     <div class="grid grid-2">
@@ -76,8 +76,8 @@
 
         <aside class="panel panel-body stack">
             <h2>Bereits freigeschaltet?</h2>
-            <p class="muted">Fordern Sie mit Ihrer E-Mail-Adresse einen einmaligen Magic Link an. Der Link ist 30 Minuten gueltig und kann nur einmal verwendet werden.</p>
-            <a class="btn" href="{{ route('customer-portal.login') }}">Magic Link anfordern</a>
+            <p class="muted">Melden Sie sich mit Ihrer E-Mail-Adresse und Ihrem Passwort an. Alternativ koennen Sie weiterhin einen einmaligen Magic Link nutzen.</p>
+            <a class="btn" href="{{ route('customer-portal.login') }}">Jetzt anmelden</a>
         </aside>
     </div>
 @endsection

@@ -10,7 +10,10 @@
 <body>
 <div class="app-shell">
     <header class="topbar">
-        <a class="brand" href="{{ route('geiser-portal.home') }}">Il Coccolino-Serviceportal</a>
+        <a class="brand" href="{{ route('geiser-portal.home') }}">
+            <img class="brand-logo" src="{{ asset('img/logo-cibena.png') }}" alt="Cibena Logo">
+            <span class="brand-name">Il Coccolino-Serviceportal</span>
+        </a>
         <nav class="nav">
             <a href="{{ route('geiser-portal.home') }}" @class(['active' => request()->routeIs('geiser-portal.home')])>Start</a>
             <a href="{{ route('geiser-portal.login') }}" @class(['active' => request()->routeIs('geiser-portal.login')])>Login</a>

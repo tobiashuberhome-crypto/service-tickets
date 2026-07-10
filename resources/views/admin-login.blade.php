@@ -13,6 +13,7 @@
         @include('partials.alerts')
 
         <div class="panel panel-body">
+            <p class="login-logo"><img src="{{ asset('img/logo-cibena.png') }}" alt="Cibena Logo"></p>
             <h1 style="margin-top: 0;">Admin Anmeldung</h1>
             <p class="muted">Bitte mit Admin-Benutzer aus der Datenbank anmelden.</p>
 
@@ -35,4 +36,3 @@
 </div>
 </body>
 </html>
-

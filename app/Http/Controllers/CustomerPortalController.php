@@ -53,6 +53,41 @@ class CustomerPortalController extends Controller
         return view('customer-portal.login');
     }
 
+    public function loginWithPassword(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'email' => ['required', 'email', 'max:255'],
+            'password' => ['required', 'string', 'max:255'],
+        ]);
+
+        $account = CustomerPortalAccount::query()
+            ->where('email', mb_strtolower($data['email']))
+            ->where('portal_scope', CustomerPortalAccount::PORTAL_SCOPE_DEFAULT)
+            ->where('is_active', true)
+            ->first();
+
+        $password = (string) ($account?->password ?? '');
+        $passwordMatches = $account
+            && $password !== ''
+            && (
+                Hash::check($data['password'], $password)
+                || hash_equals($password, $data['password'])
+            );
+
+        if (! $passwordMatches) {
+            throw ValidationException::withMessages([
+                'email' => 'E-Mail oder Passwort ist ungueltig.',
+            ]);
+        }
+
+        $account->forceFill(['last_login_at' => now()])->save();
+
+        $request->session()->regenerate();
+        $request->session()->put('customer_portal_account_id', $account->id);
+
+        return redirect()->route('customer-portal.dashboard')->with('status', 'Sie sind im Kundenportal angemeldet.');
+    }
+
     public function sendMagicLink(Request $request): RedirectResponse
     {
         $data = $request->validate([

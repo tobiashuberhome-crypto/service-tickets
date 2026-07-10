@@ -3,6 +3,7 @@
 @section('content')
     <div class="page-header">
         <div>
+            <p class="login-logo"><img src="{{ asset('img/logo-cibena.png') }}" alt="Cibena Logo"></p>
             <h1>Login fuer Il Coccolino-Serviceportal</h1>
             <p class="muted">Sie koennen sich entweder per Magic Link oder direkt mit E-Mail und Passwort anmelden.</p>
         </div>
