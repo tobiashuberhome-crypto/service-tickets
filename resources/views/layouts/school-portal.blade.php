@@ -28,7 +28,10 @@
 <body>
 <div class="app-shell">
     <header class="topbar">
-        <a class="brand" href="{{ route('school-portal.home') }}">Schul-Serviceportal</a>
+        <a class="brand" href="{{ route('school-portal.home') }}">
+            <img class="brand-logo" src="{{ asset('img/logo-cibena.png') }}" alt="Cibena Logo">
+            <span class="brand-name">Schul-Serviceportal</span>
+        </a>
         <nav class="nav">
             <a href="{{ route('school-portal.home') }}" @class(['active' => request()->routeIs('school-portal.home')])>Start</a>
             @if (session('school_portal_account_id'))

@@ -6,7 +6,7 @@
             <h1>Il Coccolino-Serviceportal</h1>
             <p class="muted">Tickets fuer den fest hinterlegten Dolibarr-Kunden 9 erfassen, mit eigener Maschinenakte pro Seriennummer.</p>
         </div>
-        <a class="btn" href="{{ route('geiser-portal.login') }}">Login anfordern</a>
+        <a class="btn" href="{{ route('geiser-portal.login') }}">Zum Login</a>
     </div>
 
     <div class="grid grid-2">
@@ -26,8 +26,8 @@
                 <p class="muted">Sie sind bereits angemeldet fuer {{ $account->company_name }}.</p>
                 <a class="btn" href="{{ route('geiser-portal.dashboard') }}">Zu meinen Tickets</a>
             @else
-                <p class="muted">Fordern Sie mit Ihrer freigeschalteten E-Mail-Adresse einen Magic Link an.</p>
-                <a class="btn" href="{{ route('geiser-portal.login') }}">Magic Link anfordern</a>
+                <p class="muted">Melden Sie sich mit E-Mail und Passwort an oder nutzen Sie alternativ einen Magic Link.</p>
+                <a class="btn" href="{{ route('geiser-portal.login') }}">Jetzt anmelden</a>
             @endif
         </aside>
     </div>

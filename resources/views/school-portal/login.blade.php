@@ -3,8 +3,9 @@
 @section('content')
     <div class="page-header">
         <div>
+            <p class="login-logo"><img src="{{ asset('img/logo-cibena.png') }}" alt="Cibena Logo"></p>
             <h1>Login - Schul-Serviceportal</h1>
-            <p class="muted">Sie koennen sich per E-Mail + Passwort oder per Magic Link anmelden.</p>
+            <p class="muted">Anmeldung mit E-Mail und Passwort, optional auch per Magic Link.</p>
         </div>
     </div>
 
@@ -26,7 +27,7 @@
     </div>
 
     <div class="panel panel-body stack" style="max-width:560px;">
-        <h3>Alternativ: Magic Link anfordern</h3>
+        <h3>Alternativ: Magic Link</h3>
         <p class="muted">Sie erhalten einen Einmal-Link an Ihre E-Mail-Adresse, der 30 Minuten gueltig ist.</p>
         <form method="post" action="{{ route('school-portal.magic.send') }}" class="stack">
             @csrf

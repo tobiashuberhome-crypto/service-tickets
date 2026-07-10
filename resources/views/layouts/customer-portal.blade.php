@@ -10,10 +10,13 @@
 <body>
 <div class="app-shell">
     <header class="topbar">
-        <a class="brand" href="{{ route('customer-portal.home') }}">Kundenportal</a>
+        <a class="brand" href="{{ route('customer-portal.home') }}">
+            <img class="brand-logo" src="{{ asset('img/logo-cibena.png') }}" alt="Cibena Logo">
+            <span class="brand-name">Kundenportal</span>
+        </a>
         <nav class="nav">
             <a href="{{ route('customer-portal.home') }}" @class(['active' => request()->routeIs('customer-portal.home')])>Start</a>
-            <a href="{{ route('customer-portal.login') }}" @class(['active' => request()->routeIs('customer-portal.login')])>Magic Link</a>
+            <a href="{{ route('customer-portal.login') }}" @class(['active' => request()->routeIs('customer-portal.login')])>Login</a>
             @if (session('customer_portal_account_id'))
                 <a href="{{ route('customer-portal.dashboard') }}" @class(['active' => request()->routeIs('customer-portal.dashboard')])>Meine Tickets</a>
                 <form method="post" action="{{ route('customer-portal.logout') }}" style="display:inline">

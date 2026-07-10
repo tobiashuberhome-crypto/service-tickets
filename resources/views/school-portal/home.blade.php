@@ -9,7 +9,7 @@
         @if ($account)
             <a class="btn" href="{{ route('school-portal.dashboard') }}">Zur Übersicht</a>
         @else
-            <a class="btn" href="{{ route('school-portal.login') }}">Login anfordern</a>
+            <a class="btn" href="{{ route('school-portal.login') }}">Zum Login</a>
         @endif
     </div>
 
@@ -30,8 +30,8 @@
                 <p class="muted">Sie sind angemeldet als {{ $account->company_name }}.</p>
                 <a class="btn" href="{{ route('school-portal.dashboard') }}">Zur Übersicht</a>
             @else
-                <p class="muted">Fordern Sie mit Ihrer hinterlegten E-Mail-Adresse einen Login-Link an.</p>
-                <a class="btn" href="{{ route('school-portal.login') }}">Magic Link anfordern</a>
+                <p class="muted">Melden Sie sich mit E-Mail und Passwort an oder nutzen Sie alternativ einen Magic Link.</p>
+                <a class="btn" href="{{ route('school-portal.login') }}">Jetzt anmelden</a>
             @endif
         </aside>
     </div>
