@@ -625,3 +625,43 @@ details .details-body {
 .pagination-wrap {
     margin-top: 16px;
 }
+
+.message-thread {
+    display: grid;
+    gap: 10px;
+}
+
+.message-item {
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 10px 12px;
+    background: #fff;
+}
+
+.message-item.is-admin {
+    border-left: 4px solid var(--brand);
+}
+
+.message-item.is-customer {
+    border-left: 4px solid var(--accent);
+    background: var(--surface-soft);
+}
+
+.message-meta {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: baseline;
+    margin-bottom: 6px;
+}
+
+.message-body {
+    white-space: pre-wrap;
+}
+
+.message-attachments {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 8px;
+}

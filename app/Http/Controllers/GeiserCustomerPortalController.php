@@ -444,7 +444,7 @@ class GeiserCustomerPortalController extends Controller
             abort(403);
         }
 
-        $ticket->load(['customerMachine', 'customerMachineProfile', 'parts', 'serviceLines']);
+        $ticket->load(['customerMachine', 'customerMachineProfile', 'parts', 'serviceLines', 'messages.attachments']);
         $estimateLines = $ticket->customer_portal_estimate_lines ?: $this->buildEstimateSnapshot([])[0];
         $estimateTotal = $ticket->customer_portal_estimate_total;
 
