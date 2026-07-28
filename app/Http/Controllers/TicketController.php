@@ -161,7 +161,7 @@ class TicketController extends Controller
 
     public function show(Request $request, Ticket $ticket, DolibarrClient $dolibarr): View
     {
-        $ticket->load(['customerMachine', 'customerMachineProfile', 'parts', 'serviceLines']);
+        $ticket->load(['customerMachine', 'customerMachineProfile', 'parts', 'serviceLines', 'customerPortalAccount', 'messages.attachments']);
 
         $partsMode = $request->query('parts');
         $partSearch = trim((string) $request->query('part_search'));
