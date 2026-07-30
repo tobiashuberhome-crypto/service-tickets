@@ -35,7 +35,7 @@ class CustomerMachine extends Model
     public function displayName(): string
     {
         $manufacturer = $this->manufacturer_snapshot ? $this->manufacturer_snapshot.' / ' : '';
-        $serial = $this->serial_number ? ' Â· SN '.$this->serial_number : '';
+        $serial = $this->serial_number ? ' - SN '.$this->serial_number : '';
 
         return $manufacturer.$this->machine_ref_snapshot.$serial;
     }

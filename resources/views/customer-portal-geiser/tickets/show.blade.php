@@ -38,7 +38,7 @@
 
     @if (!$ticket->created_via_customer_portal)
         <div class="alert alert-info">
-            Dieses Ticket wurde intern angelegt und kann hier im Geiser-Portal weiter bearbeitet werden.
+            Dieses Ticket wurde intern angelegt und kann hier im Il Coccolino-Portal weiter bearbeitet werden.
         </div>
     @endif
 
@@ -419,7 +419,7 @@
                 @foreach ($ticket->messages as $ticketMessage)
                     <article class="message-item {{ $ticketMessage->sender_type === \App\Models\TicketMessage::SENDER_CUSTOMER ? 'is-customer' : 'is-admin' }}">
                         <header class="message-meta">
-                            <strong>{{ $ticketMessage->sender_label ?: ($ticketMessage->sender_type === \App\Models\TicketMessage::SENDER_CUSTOMER ? 'Geiser' : 'Service') }}</strong>
+                            <strong>{{ $ticketMessage->sender_label ?: ($ticketMessage->sender_type === \App\Models\TicketMessage::SENDER_CUSTOMER ? 'Il Coccolino' : 'Service') }}</strong>
                             <span class="muted">{{ $ticketMessage->created_at?->format('d.m.Y H:i') }}</span>
                         </header>
                         @if (filled($ticketMessage->body))

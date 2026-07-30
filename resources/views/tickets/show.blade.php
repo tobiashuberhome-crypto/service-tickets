@@ -65,7 +65,7 @@
 
     <div class="panel panel-body stack" style="margin-bottom: 16px;">
         <div class="section-title">
-            <h2>Nachrichtenverlauf (Geiser)</h2>
+            <h2>Nachrichtenverlauf (Il Coccolino)</h2>
         </div>
 
         @if ($ticket->messages->isEmpty())
@@ -75,7 +75,7 @@
                 @foreach ($ticket->messages as $ticketMessage)
                     <article class="message-item {{ $ticketMessage->sender_type === \App\Models\TicketMessage::SENDER_ADMIN ? 'is-admin' : 'is-customer' }}">
                         <header class="message-meta">
-                            <strong>{{ $ticketMessage->sender_label ?: ($ticketMessage->sender_type === \App\Models\TicketMessage::SENDER_ADMIN ? 'Service' : 'Geiser') }}</strong>
+                            <strong>{{ $ticketMessage->sender_label ?: ($ticketMessage->sender_type === \App\Models\TicketMessage::SENDER_ADMIN ? 'Service' : 'Il Coccolino') }}</strong>
                             <span class="muted">{{ $ticketMessage->created_at?->format('d.m.Y H:i') }}</span>
                         </header>
                         @if (filled($ticketMessage->body))
@@ -99,7 +99,7 @@
             <form method="post" action="{{ route('tickets.messages.store', $ticket) }}" class="stack" enctype="multipart/form-data">
                 @csrf
                 <div>
-                    <label for="message-body">Nachricht an Geiser</label>
+                    <label for="message-body">Nachricht an Il Coccolino</label>
                     <textarea id="message-body" name="body" placeholder="Nachricht eingeben...">{{ old('body') }}</textarea>
                     @error('body')<p class="text-danger">{{ $message }}</p>@enderror
                 </div>
@@ -114,7 +114,7 @@
                 </div>
             </form>
         @else
-            <p class="muted">Kein aktiver Geiser-Portalzugang mit diesem Ticket verknuepft. Nachricht kann nicht zugestellt werden.</p>
+            <p class="muted">Kein aktiver Il Coccolino-Portalzugang mit diesem Ticket verknuepft. Nachricht kann nicht zugestellt werden.</p>
         @endif
     </div>
 
@@ -303,7 +303,7 @@
                 @endif
 
                 @if (! empty($ticket->customer_portal_estimate_lines))
-                    <h2>Geiser: Voraussichtliche interne Positionen</h2>
+                    <h2>Il Coccolino: Voraussichtliche interne Positionen</h2>
                     <div class="table-wrap" style="margin-bottom: 16px;">
                         <table>
                             <thead>

@@ -4,7 +4,7 @@
     <div class="page-header">
         <div>
             <h1>Neues Passwort vergeben</h1>
-            <p class="muted">Bitte vergeben Sie ein neues Passwort fuer Ihr Geiser-Serviceportal-Konto.</p>
+            <p class="muted">Bitte vergeben Sie ein neues Passwort fuer Ihr Il Coccolino-Serviceportal-Konto.</p>
         </div>
     </div>
 

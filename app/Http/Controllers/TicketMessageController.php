@@ -47,7 +47,7 @@ class TicketMessageController extends Controller
         }
 
         if (! $customerAccount || ! $customerAccount->isGeiserPortal() || ! filled($customerAccount->email)) {
-            return back()->with('warning', 'Nachricht gespeichert, aber kein aktiver Geiser-Empfaenger mit E-Mail am Ticket hinterlegt.');
+            return back()->with('warning', 'Nachricht gespeichert, aber kein aktiver Il Coccolino-Empfaenger mit E-Mail am Ticket hinterlegt.');
         }
 
         if (! $mailSent) {
