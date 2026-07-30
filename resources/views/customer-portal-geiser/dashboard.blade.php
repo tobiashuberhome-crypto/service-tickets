@@ -27,7 +27,7 @@
 
     <div class="panel panel-body">
         @if ($tickets->isEmpty())
-            <p class="muted">Es wurden noch keine Tickets ueber das Geiser-Serviceportal erstellt.</p>
+            <p class="muted">Es wurden noch keine Tickets ueber das Il Coccolino-Serviceportal erstellt.</p>
         @else
             <div class="table-wrap">
                 <table>

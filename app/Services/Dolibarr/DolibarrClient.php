@@ -137,6 +137,7 @@ class DolibarrClient
             'type' => 0,
             'status' => 1,
             'status_buy' => 0,
+            'barcode' => $payload['barcode'] ?? $payload['ref'],
             'array_options' => [
                 'options_hersteller' => $payload['manufacturer'] ?? null,
             ],

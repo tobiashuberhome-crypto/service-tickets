@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
     <meta charset="utf-8">
-    <title>Geiser Ticket {{ $ticket->ticket_number }}</title>
+    <title>Il Coccolino Ticket {{ $ticket->ticket_number }}</title>
     <style>
         body { font-family: DejaVu Sans, sans-serif; font-size: 10px; color: #111827; line-height: 1.25; }
         h1 { margin: 0 0 4px; font-size: 14px; }
