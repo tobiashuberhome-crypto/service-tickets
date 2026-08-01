@@ -11,10 +11,12 @@ use App\Models\Ticket;
 use App\Services\Ocr\OcrService;
 use App\Services\Ocr\OcrDataParser;
 use App\Services\Tickets\DolibarrOrderSyncService;
+use App\Services\Tickets\GeiserInvoiceCalculator;
 use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -459,6 +461,10 @@ class GeiserCustomerPortalController extends Controller
             'customerStatusLabel' => $this->customerVisibleStatus($ticket),
             'estimateLines' => $estimateLines,
             'estimateTotal' => $estimateTotal,
+            'customerEmail' => trim((string) ($ticket->customerMachineProfile?->email
+                ?: $ticket->customer_email_snapshot
+                ?: $account->email
+                ?: '')),
         ]);
     }
 
@@ -496,6 +502,69 @@ class GeiserCustomerPortalController extends Controller
         $pdf = Pdf::loadView('customer-portal-geiser.tickets.print', $payload)->setPaper('a4', 'portrait');
 
         return $pdf->stream($fileName);
+    }
+
+    public function generateWorkReport(Request $request, Ticket $ticket, GeiserInvoiceCalculator $invoiceCalculator)
+    {
+        $account = $this->account($request);
+
+        if (! $this->canViewTicket($account, $ticket)) {
+            abort(403);
+        }
+
+        $ticket->load(['customerMachine', 'customerMachineProfile', 'parts', 'serviceLines']);
+        $summary = $invoiceCalculator->summarize($ticket);
+        $invoiceLines = $invoiceCalculator->withCopyTexts($ticket, $summary['invoiceLines']);
+
+        $payload = $this->buildWorkReportPayload($ticket, $invoiceLines);
+        $fileName = 'arbeitsbericht-'.$ticket->ticket_number.'.pdf';
+
+        if (! class_exists(Pdf::class)) {
+            return response()->view('customer-portal-geiser.tickets.work-report', $payload);
+        }
+
+        $pdf = Pdf::loadView('customer-portal-geiser.tickets.work-report', $payload)->setPaper('a4', 'portrait');
+
+        return $pdf->stream($fileName);
+    }
+
+    public function mailWorkReport(Request $request, Ticket $ticket, GeiserInvoiceCalculator $invoiceCalculator): RedirectResponse
+    {
+        $account = $this->account($request);
+
+        if (! $this->canViewTicket($account, $ticket)) {
+            abort(403);
+        }
+
+        $ticket->load(['customerMachine', 'customerMachineProfile', 'parts', 'serviceLines']);
+        $summary = $invoiceCalculator->summarize($ticket);
+        $invoiceLines = $invoiceCalculator->withCopyTexts($ticket, $summary['invoiceLines']);
+
+        $recipientEmail = trim((string) ($ticket->customerMachineProfile?->email
+            ?: $ticket->customer_email_snapshot
+            ?: $account->email
+            ?: ''));
+
+        if ($recipientEmail === '') {
+            return redirect()->route('geiser-portal.tickets.show', $ticket)
+                ->with('warning', 'Es ist keine E-Mail-Adresse hinterlegt. Der Arbeitsbericht konnte nicht versendet werden.');
+        }
+
+        if (! class_exists(Pdf::class)) {
+            return redirect()->route('geiser-portal.tickets.show', $ticket)
+                ->with('warning', 'PDF-Generierung ist nicht verfuegbar.');
+        }
+
+        $payload = $this->buildWorkReportPayload($ticket, $invoiceLines);
+        $fileName = 'arbeitsbericht-'.$ticket->ticket_number.'.pdf';
+        $pdfBinary = Pdf::loadView('customer-portal-geiser.tickets.work-report', $payload)
+            ->setPaper('a4', 'portrait')
+            ->output();
+
+        $this->sendWorkReportByMail($ticket, $recipientEmail, $fileName, $pdfBinary);
+
+        return redirect()->route('geiser-portal.tickets.show', $ticket)
+            ->with('status', 'Der Arbeitsbericht wurde per E-Mail an '.$recipientEmail.' gesendet.');
     }
 
     public function updateTicket(Request $request, Ticket $ticket): RedirectResponse
@@ -693,6 +762,42 @@ class GeiserCustomerPortalController extends Controller
         }
     }
 
+
+    private function buildWorkReportPayload(Ticket $ticket, Collection $invoiceLines): array
+    {
+        return [
+            'ticket' => $ticket,
+            'invoiceLines' => $invoiceLines,
+            'manufacturer' => trim((string) ($ticket->customerMachine?->manufacturer_snapshot ?: $ticket->customerMachineProfile?->manufacturer_snapshot ?: '')),
+            'machineRef' => trim((string) ($ticket->customerMachine?->machine_ref_snapshot ?: $ticket->customerMachineProfile?->machine_ref_snapshot ?: '')),
+            'serialNumber' => trim((string) ($ticket->customerMachine?->serial_number ?: $ticket->customerMachineProfile?->serial_number ?: '-')),
+            'generatedAt' => now(),
+        ];
+    }
+
+    private function sendWorkReportByMail(Ticket $ticket, string $recipientEmail, string $fileName, string $pdfBinary): void
+    {
+        $fromAddress = (string) config('geiser_invoice.mail.from_address', 'service@example.com');
+        $fromName = (string) config('geiser_invoice.mail.from_name', 'Service Tickets');
+        $subject = 'Ihr Arbeitsbericht - Ticket '.$ticket->ticket_number;
+        $body = "Guten Tag,\n\nanbei erhalten Sie den Arbeitsbericht zu Ihrem Service-Ticket "
+            .$ticket->ticket_number.".\n\nBei Fragen stehen wir gerne zur Verfuegung.\n\nMit freundlichen Gruessen";
+
+        try {
+            Mail::raw($body, function ($message) use ($recipientEmail, $subject, $fromAddress, $fromName, $pdfBinary, $fileName): void {
+                $message->to($recipientEmail)
+                    ->from($fromAddress, $fromName)
+                    ->subject($subject)
+                    ->attachData($pdfBinary, $fileName, ['mime' => 'application/pdf']);
+            });
+        } catch (Throwable $exception) {
+            Log::warning('Geiser-Arbeitsbericht konnte nicht per E-Mail versendet werden.', [
+                'ticket_id' => $ticket->id,
+                'recipient' => $recipientEmail,
+                'error' => $exception->getMessage(),
+            ]);
+        }
+    }
 
     /**
      * Store compressed customer photo to public disk.

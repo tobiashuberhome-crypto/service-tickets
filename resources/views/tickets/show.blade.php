@@ -409,6 +409,19 @@
                         </tbody>
                     </table>
                 </div>
+
+                @if ($invoiceSummary['invoiceLines']->isNotEmpty())
+                    <div class="panel panel-body" style="margin-top: 16px;">
+                        <h2>Berechnete Rechnungssumme im Ticket-System</h2>
+                        <div class="stack">
+                            <div><strong>Summe VK:</strong> {{ number_format((float) $invoiceSummary['totalOriginalNet'], 2, ',', '.') }} EUR</div>
+                            <div><strong>Rabatt gesamt:</strong> - {{ number_format((float) $invoiceSummary['totalDiscountAmount'], 2, ',', '.') }} EUR</div>
+                            <div><strong>Gesamt netto:</strong> {{ number_format((float) $invoiceSummary['totalNet'], 2, ',', '.') }} EUR</div>
+                            <div><strong>{{ $invoiceSummary['vatLabel'] }}:</strong> {{ number_format((float) $invoiceSummary['totalVat'], 2, ',', '.') }} EUR</div>
+                            <div><strong>Gesamt brutto:</strong> {{ number_format((float) $invoiceSummary['totalGross'], 2, ',', '.') }} EUR</div>
+                        </div>
+                    </div>
+                @endif
             </div>
 
             @if ($ticket->serviceLines->isNotEmpty())

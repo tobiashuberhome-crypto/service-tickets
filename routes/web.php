@@ -62,6 +62,8 @@ Route::prefix('/kundenportal/geiser')->group(function (): void {
         Route::get('/tickets/neu', [GeiserCustomerPortalController::class, 'createTicket'])->name('geiser-portal.tickets.create');
         Route::post('/tickets', [GeiserCustomerPortalController::class, 'storeTicket'])->name('geiser-portal.tickets.store');
         Route::get('/tickets/{ticket}/print', [GeiserCustomerPortalController::class, 'printTicket'])->name('geiser-portal.tickets.print');
+        Route::get('/tickets/{ticket}/work-report', [GeiserCustomerPortalController::class, 'generateWorkReport'])->name('geiser-portal.tickets.work-report');
+        Route::post('/tickets/{ticket}/work-report/send-mail', [GeiserCustomerPortalController::class, 'mailWorkReport'])->name('geiser-portal.tickets.work-report.mail');
         Route::get('/tickets/{ticket}', [GeiserCustomerPortalController::class, 'showTicket'])->name('geiser-portal.tickets.show');
         Route::put('/tickets/{ticket}', [GeiserCustomerPortalController::class, 'updateTicket'])->name('geiser-portal.tickets.update');
         Route::post('/tickets/{ticket}/messages', [TicketMessageController::class, 'storeGeiser'])->name('geiser-portal.tickets.messages.store');

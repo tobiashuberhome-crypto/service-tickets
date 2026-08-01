@@ -8,6 +8,13 @@
         </div>
         <div class="button-row">
             <a class="btn secondary" href="{{ route('geiser-portal.tickets.print', $ticket) }}" target="_blank" rel="noopener">Ticket drucken</a>
+            <a class="btn secondary" href="{{ route('geiser-portal.tickets.work-report', $ticket) }}" target="_blank" rel="noopener">Arbeitsbericht PDF</a>
+            @if (($customerEmail ?? '') !== '')
+                <form method="post" action="{{ route('geiser-portal.tickets.work-report.mail', $ticket) }}" style="display:inline;">
+                    @csrf
+                    <button class="btn secondary" type="submit">Arbeitsbericht per E-Mail</button>
+                </form>
+            @endif
             <a class="btn secondary" href="{{ route('geiser-portal.dashboard') }}">Zurueck zur Übersicht</a>
         </div>
     </div>

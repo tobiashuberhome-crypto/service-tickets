@@ -151,7 +151,7 @@
     </div>
 
     <div class="section">
-        <h2>Copy-&-Paste-Textblaecke je Position</h2>
+        <h2>Copy-&-Paste-Textblöcke je Position</h2>
         <table class="table">
             <thead>
                 <tr>
