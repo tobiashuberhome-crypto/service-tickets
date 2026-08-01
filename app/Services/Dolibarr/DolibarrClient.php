@@ -133,6 +133,9 @@ class DolibarrClient
     {
         $barcode = trim((string) ($payload['barcode'] ?? ''));
         if ($barcode === '') {
+            $barcode = trim((string) ($payload['ref'] ?? ''));
+        }
+        if ($barcode === '') {
             $barcode = 'auto';
         }
 

@@ -63,6 +63,61 @@
     </div>
     @endif
 
+    <div class="panel panel-body stack" style="margin-bottom: 16px;">
+        <div class="section-title">
+            <h2>Nachrichtenverlauf (Il Coccolino)</h2>
+        </div>
+
+        @if ($ticket->messages->isEmpty())
+            <p class="muted">Noch keine Nachrichten vorhanden.</p>
+        @else
+            <div class="message-thread">
+                @foreach ($ticket->messages as $ticketMessage)
+                    <article class="message-item {{ $ticketMessage->sender_type === \App\Models\TicketMessage::SENDER_ADMIN ? 'is-admin' : 'is-customer' }}">
+                        <header class="message-meta">
+                            <strong>{{ $ticketMessage->sender_label ?: ($ticketMessage->sender_type === \App\Models\TicketMessage::SENDER_ADMIN ? 'Service' : 'Il Coccolino') }}</strong>
+                            <span class="muted">{{ $ticketMessage->created_at?->format('d.m.Y H:i') }}</span>
+                        </header>
+                        @if (filled($ticketMessage->body))
+                            <div class="message-body">{{ $ticketMessage->body }}</div>
+                        @endif
+                        @if ($ticketMessage->attachments->isNotEmpty())
+                            <div class="message-attachments">
+                                @foreach ($ticketMessage->attachments as $attachment)
+                                    <a href="{{ route('tickets.messages.attachments.download', [$ticket, $ticketMessage, $attachment]) }}" class="btn secondary">
+                                        Anhang: {{ $attachment->original_name }}
+                                    </a>
+                                @endforeach
+                            </div>
+                        @endif
+                    </article>
+                @endforeach
+            </div>
+        @endif
+
+        @if ($ticket->customerPortalAccount && $ticket->customerPortalAccount->isGeiserPortal())
+            <form method="post" action="{{ route('tickets.messages.store', $ticket) }}" class="stack" enctype="multipart/form-data">
+                @csrf
+                <div>
+                    <label for="message-body">Nachricht an Il Coccolino</label>
+                    <textarea id="message-body" name="body" placeholder="Nachricht eingeben...">{{ old('body') }}</textarea>
+                    @error('body')<p class="text-danger">{{ $message }}</p>@enderror
+                </div>
+                <div>
+                    <label for="message-attachments">Fotos/Scans (optional)</label>
+                    <input id="message-attachments" type="file" name="attachments[]" multiple accept=".jpg,.jpeg,.png,.webp,.pdf">
+                    @error('attachments')<p class="text-danger">{{ $message }}</p>@enderror
+                    @error('attachments.*')<p class="text-danger">{{ $message }}</p>@enderror
+                </div>
+                <div class="button-row">
+                    <button class="btn" type="submit">An Kunden senden</button>
+                </div>
+            </form>
+        @else
+            <p class="muted">Kein aktiver Il Coccolino-Portalzugang mit diesem Ticket verknuepft. Nachricht kann nicht zugestellt werden.</p>
+        @endif
+    </div>
+
     <div class="ticket-layout">
         <form method="post" action="{{ route('tickets.update', $ticket) }}" class="panel panel-body">
             @csrf
@@ -246,7 +301,7 @@
                 @endif
 
                 @if (! empty($ticket->customer_portal_estimate_lines))
-                    <h2>Geiser: Voraussichtliche interne Positionen</h2>
+                    <h2>Il Coccolino: Voraussichtliche interne Positionen</h2>
                     <div class="table-wrap" style="margin-bottom: 16px;">
                         <table>
                             <thead>

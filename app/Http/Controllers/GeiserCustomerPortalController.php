@@ -73,8 +73,8 @@ class GeiserCustomerPortalController extends Controller
             $url = route('geiser-portal.magic', ['token' => $plainToken]);
 
             try {
-                Mail::raw("Guten Tag,\n\nueber den folgenden Link koennen Sie sich im Geiser-Serviceportal anmelden. Der Link ist 30 Minuten gueltig und kann nur einmal verwendet werden:\n\n{$url}\n\nFalls Sie diesen Link nicht angefordert haben, koennen Sie diese E-Mail ignorieren.\n", function ($message) use ($account): void {
-                    $message->to($account->email)->subject('Ihr Zugang zum Geiser-Serviceportal');
+                Mail::raw("Guten Tag,\n\nueber den folgenden Link koennen Sie sich im Il Coccolino-Serviceportal anmelden. Der Link ist 30 Minuten gueltig und kann nur einmal verwendet werden:\n\n{$url}\n\nFalls Sie diesen Link nicht angefordert haben, koennen Sie diese E-Mail ignorieren.\n", function ($message) use ($account): void {
+                    $message->to($account->email)->subject('Ihr Zugang zum Il Coccolino-Serviceportal');
                 });
             } catch (Throwable $exception) {
                 Log::warning('Magic-Link-Mail fuer Geiser-Portal konnte nicht gesendet werden.', [
@@ -85,7 +85,7 @@ class GeiserCustomerPortalController extends Controller
             }
         }
 
-        return back()->with('status', 'Falls fuer diese E-Mail ein Geiser-Portalzugang existiert, wurde ein Magic Link versendet.');
+        return back()->with('status', 'Falls fuer diese E-Mail ein Il Coccolino-Portalzugang existiert, wurde ein Magic Link versendet.');
     }
 
     public function loginWithPassword(Request $request): RedirectResponse
@@ -116,7 +116,7 @@ class GeiserCustomerPortalController extends Controller
         $request->session()->regenerate();
         $request->session()->put(self::SESSION_KEY, $account->id);
 
-        return redirect()->route('geiser-portal.dashboard')->with('status', 'Sie sind im Geiser-Serviceportal angemeldet.');
+        return redirect()->route('geiser-portal.dashboard')->with('status', 'Sie sind im Il Coccolino-Serviceportal angemeldet.');
     }
 
     public function sendPasswordResetLink(Request $request): RedirectResponse
@@ -138,8 +138,8 @@ class GeiserCustomerPortalController extends Controller
 
                 $url = route('geiser-portal.password.reset.form', ['token' => $plainToken]);
 
-                Mail::raw("Guten Tag,\n\nueber den folgenden Link koennen Sie ein neues Passwort fuer das Geiser-Serviceportal vergeben. Der Link ist 12 Stunden gueltig und kann nur einmal verwendet werden:\n\n{$url}\n\nFalls Sie diese Anfrage nicht gestellt haben, koennen Sie diese E-Mail ignorieren.\n", function ($message) use ($account): void {
-                    $message->to($account->email)->subject('Neues Passwort fuer Geiser-Serviceportal');
+                Mail::raw("Guten Tag,\n\nueber den folgenden Link koennen Sie ein neues Passwort fuer das Il Coccolino-Serviceportal vergeben. Der Link ist 12 Stunden gueltig und kann nur einmal verwendet werden:\n\n{$url}\n\nFalls Sie diese Anfrage nicht gestellt haben, koennen Sie diese E-Mail ignorieren.\n", function ($message) use ($account): void {
+                    $message->to($account->email)->subject('Neues Passwort fuer Il Coccolino-Serviceportal');
                 });
             } catch (Throwable $exception) {
                 Log::warning('Passwort-Reset-Mail fuer Geiser-Portal konnte nicht gesendet werden.', [
@@ -150,7 +150,7 @@ class GeiserCustomerPortalController extends Controller
             }
         }
 
-        return back()->with('status', 'Falls fuer diese E-Mail ein Geiser-Portalzugang existiert, wurde ein Link zur Passwortvergabe versendet.');
+        return back()->with('status', 'Falls fuer diese E-Mail ein Il Coccolino-Portalzugang existiert, wurde ein Link zur Passwortvergabe versendet.');
     }
 
     public function showPasswordResetForm(string $token): View|RedirectResponse
@@ -202,7 +202,7 @@ class GeiserCustomerPortalController extends Controller
         $request->session()->regenerate();
         $request->session()->put(self::SESSION_KEY, $magicLink->account->id);
 
-        return redirect()->route('geiser-portal.dashboard')->with('status', 'Sie sind im Geiser-Serviceportal angemeldet.');
+        return redirect()->route('geiser-portal.dashboard')->with('status', 'Sie sind im Il Coccolino-Serviceportal angemeldet.');
     }
 
     public function dashboard(Request $request): View
@@ -444,7 +444,7 @@ class GeiserCustomerPortalController extends Controller
             abort(403);
         }
 
-        $ticket->load(['customerMachine', 'customerMachineProfile', 'parts', 'serviceLines']);
+        $ticket->load(['customerMachine', 'customerMachineProfile', 'parts', 'serviceLines', 'messages.attachments']);
         $estimateLines = $ticket->customer_portal_estimate_lines ?: $this->buildEstimateSnapshot([])[0];
         $estimateTotal = $ticket->customer_portal_estimate_total;
 

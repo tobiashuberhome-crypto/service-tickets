@@ -38,7 +38,7 @@
 
     @if (!$ticket->created_via_customer_portal)
         <div class="alert alert-info">
-            Dieses Ticket wurde intern angelegt und kann hier im Geiser-Portal weiter bearbeitet werden.
+            Dieses Ticket wurde intern angelegt und kann hier im Il Coccolino-Portal weiter bearbeitet werden.
         </div>
     @endif
 
@@ -405,6 +405,57 @@
                     </table>
                 </div>
         @endif
+    </div>
+
+    <div class="panel panel-body stack">
+        <div class="section-title">
+            <h3>Nachrichtenverlauf</h3>
+        </div>
+
+        @if ($ticket->messages->isEmpty())
+            <p class="muted">Noch keine Nachrichten vorhanden.</p>
+        @else
+            <div class="message-thread">
+                @foreach ($ticket->messages as $ticketMessage)
+                    <article class="message-item {{ $ticketMessage->sender_type === \App\Models\TicketMessage::SENDER_CUSTOMER ? 'is-customer' : 'is-admin' }}">
+                        <header class="message-meta">
+                            <strong>{{ $ticketMessage->sender_label ?: ($ticketMessage->sender_type === \App\Models\TicketMessage::SENDER_CUSTOMER ? 'Il Coccolino' : 'Service') }}</strong>
+                            <span class="muted">{{ $ticketMessage->created_at?->format('d.m.Y H:i') }}</span>
+                        </header>
+                        @if (filled($ticketMessage->body))
+                            <div class="message-body">{{ $ticketMessage->body }}</div>
+                        @endif
+                        @if ($ticketMessage->attachments->isNotEmpty())
+                            <div class="message-attachments">
+                                @foreach ($ticketMessage->attachments as $attachment)
+                                    <a href="{{ route('geiser-portal.tickets.messages.attachments.download', [$ticket, $ticketMessage, $attachment]) }}" class="btn secondary">
+                                        Anhang: {{ $attachment->original_name }}
+                                    </a>
+                                @endforeach
+                            </div>
+                        @endif
+                    </article>
+                @endforeach
+            </div>
+        @endif
+
+        <form method="post" action="{{ route('geiser-portal.tickets.messages.store', $ticket) }}" class="stack" enctype="multipart/form-data">
+            @csrf
+            <div>
+                <label for="reply-body">Antwort</label>
+                <textarea id="reply-body" name="body" placeholder="Ihre Nachricht an den Service...">{{ old('body') }}</textarea>
+                @error('body')<span class="error">{{ $message }}</span>@enderror
+            </div>
+            <div>
+                <label for="reply-attachments">Fotos/Scans (optional)</label>
+                <input id="reply-attachments" type="file" name="attachments[]" multiple accept=".jpg,.jpeg,.png,.webp,.pdf">
+                @error('attachments')<span class="error">{{ $message }}</span>@enderror
+                @error('attachments.*')<span class="error">{{ $message }}</span>@enderror
+            </div>
+            <div class="button-row">
+                <button class="btn" type="submit">Antworten</button>
+            </div>
+        </form>
     </div>
 
     @if (!$isEditable)

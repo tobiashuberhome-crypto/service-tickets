@@ -1,7 +1,7 @@
 @extends('pdf.layouts.base')
 
-@section('title', 'Geiser Ticket '.$ticket->ticket_number)
-@section('subtitle', 'Geiser-Serviceportal · Ticket '.$ticket->ticket_number)
+@section('title', 'Il Coccolino Ticket '.$ticket->ticket_number)
+@section('subtitle', 'Il Coccolino-Serviceportal · Ticket '.$ticket->ticket_number)
 
 @section('content')
     @php

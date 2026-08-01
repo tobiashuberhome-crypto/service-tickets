@@ -16,6 +16,7 @@ use App\Http\Controllers\SparePartController;
 use App\Http\Controllers\TicketController;
 use App\Http\Controllers\WarehouseController;
 use App\Http\Controllers\TicketPartController;
+use App\Http\Controllers\TicketMessageController;
 use App\Http\Controllers\TicketServiceLineController;
 use Illuminate\Support\Facades\Route;
 
@@ -63,6 +64,8 @@ Route::prefix('/kundenportal/geiser')->group(function (): void {
         Route::get('/tickets/{ticket}/print', [GeiserCustomerPortalController::class, 'printTicket'])->name('geiser-portal.tickets.print');
         Route::get('/tickets/{ticket}', [GeiserCustomerPortalController::class, 'showTicket'])->name('geiser-portal.tickets.show');
         Route::put('/tickets/{ticket}', [GeiserCustomerPortalController::class, 'updateTicket'])->name('geiser-portal.tickets.update');
+        Route::post('/tickets/{ticket}/messages', [TicketMessageController::class, 'storeGeiser'])->name('geiser-portal.tickets.messages.store');
+        Route::get('/tickets/{ticket}/messages/{message}/attachments/{attachment}', [TicketMessageController::class, 'downloadGeiserAttachment'])->name('geiser-portal.tickets.messages.attachments.download');
         Route::post('/ocr-scan', [GeiserCustomerPortalController::class, 'scanTicketImage'])->name('geiser-portal.ocr.scan');
     });
 });
@@ -103,6 +106,8 @@ Route::middleware('admin.auth')->group(function (): void {
     Route::put('/tickets/{ticket}', [TicketController::class, 'update'])->name('tickets.update');
     Route::post('/tickets/{ticket}/complete', [TicketController::class, 'complete'])->name('tickets.complete');
     Route::post('/tickets/{ticket}/retry-sync', [TicketController::class, 'retrySync'])->name('tickets.retry-sync');
+    Route::post('/tickets/{ticket}/messages', [TicketMessageController::class, 'storeAdmin'])->name('tickets.messages.store');
+    Route::get('/tickets/{ticket}/messages/{message}/attachments/{attachment}', [TicketMessageController::class, 'downloadAdminAttachment'])->name('tickets.messages.attachments.download');
     Route::post('/tickets/{ticket}/activate-order', [TicketController::class, 'activateOrder'])->name('tickets.activate-order');
     Route::post('/tickets/{ticket}/close-order-invoice', [TicketController::class, 'closeOrderAndCreateInvoice'])->name('tickets.close-order-invoice');
     Route::post('/tickets/{ticket}/activate-invoice', [TicketController::class, 'activateInvoice'])->name('tickets.activate-invoice');
@@ -137,4 +142,3 @@ Route::middleware('admin.auth')->group(function (): void {
 
     Route::resource('portal-accounts', PortalAccountController::class)->only(['index', 'create', 'store', 'edit', 'update', 'destroy']);
 });
-
