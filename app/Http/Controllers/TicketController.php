@@ -261,7 +261,20 @@ class TicketController extends Controller
     public function update(Request $request, Ticket $ticket, DolibarrOrderSyncService $sync): RedirectResponse
     {
         if ($ticket->isDone()) {
-            return back()->with('warning', 'Erledigte Tickets koennen nicht mehr bearbeitet werden.');
+            $data = $request->validate([
+                'status' => ['required', 'in:'.implode(',', array_keys(Ticket::statusOptions()))],
+            ]);
+
+            $isNowDone = in_array($data['status'], [Ticket::STATUS_DONE, Ticket::STATUS_DELIVERED], true);
+
+            $ticket->forceFill([
+                'status' => $data['status'],
+                'completed_at' => $isNowDone ? ($ticket->completed_at ?? now()) : null,
+                'sync_status' => Ticket::SYNC_PENDING,
+                'sync_message' => null,
+            ])->save();
+
+            return redirect()->route('tickets.show', $ticket)->with('status', 'Ticket-Status aktualisiert.');
         }
 
         $data = $this->validatedTicketData($request);
@@ -463,6 +476,7 @@ class TicketController extends Controller
                 'description' => $description !== '' ? $description : 'Serviceleistung',
                 'quantity' => (float) $line->quantity,
                 'unit_price' => (float) $line->sales_price_snapshot,
+                'vat_rate' => (float) ($line->vat_rate_snapshot ?? 19),
                 'discount_rate' => $isNmService ? 0.0 : 0.20,
             ]);
         }
@@ -478,6 +492,7 @@ class TicketController extends Controller
                 'description' => $description !== '' ? $description : 'Ersatzteil',
                 'quantity' => (float) $part->quantity,
                 'unit_price' => (float) $part->sales_price_snapshot,
+                'vat_rate' => (float) ($part->vat_rate_snapshot ?? 19),
                 'discount_rate' => 0.20,
             ]);
         }
@@ -487,6 +502,7 @@ class TicketController extends Controller
                 $line['line_total'] = round($line['quantity'] * $line['unit_price'], 2);
                 $line['discount_amount'] = round($line['line_total'] * (float) $line['discount_rate'], 2);
                 $line['discounted_total'] = round($line['line_total'] - $line['discount_amount'], 2);
+                $line['vat_amount'] = round($line['discounted_total'] * ((float) $line['vat_rate'] / 100), 2);
                 $line['copy_text'] = $this->buildGeiserInvoiceCopyText($ticket, $line['description']);
 
                 return $line;
@@ -496,6 +512,17 @@ class TicketController extends Controller
         $totalOriginalNet = (float) $invoiceLines->sum('line_total');
         $totalDiscountAmount = (float) $invoiceLines->sum('discount_amount');
         $totalNet = (float) $invoiceLines->sum('discounted_total');
+        $totalVat = (float) $invoiceLines->sum('vat_amount');
+        $totalGross = round($totalNet + $totalVat, 2);
+        $vatRates = $invoiceLines
+            ->pluck('vat_rate')
+            ->map(fn (float $rate): float => round($rate, 2))
+            ->unique()
+            ->values();
+        $vatLabel = 'MwSt.';
+        if ($vatRates->count() === 1) {
+            $vatLabel = 'MwSt. ('.number_format((float) $vatRates->first(), 2, ',', '.').' %)';
+        }
         $sender = config('geiser_invoice.sender', []);
         $bank = config('geiser_invoice.bank', []);
         $footerNote = (string) config('geiser_invoice.footer_note', '');
@@ -514,6 +541,9 @@ class TicketController extends Controller
             'totalOriginalNet' => $totalOriginalNet,
             'totalDiscountAmount' => $totalDiscountAmount,
             'totalNet' => $totalNet,
+            'totalVat' => $totalVat,
+            'totalGross' => $totalGross,
+            'vatLabel' => $vatLabel,
             'sender' => $sender,
             'bank' => $bank,
             'footerNote' => $footerNote,

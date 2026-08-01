@@ -1,6 +1,7 @@
 @php
     $machine = $ticket->customerMachine;
     $readonly = $ticket->exists && $ticket->isDone();
+    $statusReadonly = false;
     $customerId = old('dolibarr_customer_id', $ticket->dolibarr_customer_id);
     $customerName = old('customer_name_snapshot', $ticket->customer_name_snapshot);
     $machineProductId = old('dolibarr_machine_product_id', $machine?->dolibarr_machine_product_id);
@@ -211,7 +212,7 @@
     <div class="section-title">
         <h2>Status</h2>
     </div>
-    <select name="status" @disabled($readonly)>
+    <select name="status" @disabled($statusReadonly)>
         @foreach ($statuses as $value => $label)
             <option value="{{ $value }}" @selected(old('status', $ticket->status ?: \App\Models\Ticket::STATUS_OPEN) === $value)>{{ $label }}</option>
         @endforeach

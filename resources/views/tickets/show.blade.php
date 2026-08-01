@@ -70,9 +70,7 @@
             @include('tickets.partials.form', ['ticket' => $ticket])
 
             <div class="button-row">
-                @if (! $ticket->isDone())
-                    <button class="btn" type="submit">Speichern</button>
-                @endif
+                <button class="btn" type="submit">Speichern</button>
                 @if ($ticket->status === \App\Models\Ticket::STATUS_OPEN)
                     <form method="post" action="{{ route('tickets.activate-order', $ticket) }}" style="display:inline;">
                         @csrf
