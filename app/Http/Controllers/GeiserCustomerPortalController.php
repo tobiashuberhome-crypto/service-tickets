@@ -778,7 +778,7 @@ class GeiserCustomerPortalController extends Controller
     private function sendWorkReportByMail(Ticket $ticket, string $recipientEmail, string $fileName, string $pdfBinary): void
     {
         $fromAddress = (string) config('geiser_invoice.mail.from_address', 'service@example.com');
-        $fromName = (string) config('geiser_invoice.mail.from_name', 'Service Tickets');
+        $fromName = (string) config('geiser_invoice.work_report_mail.from_name', 'Il Coccolino');
         $subject = 'Ihr Arbeitsbericht - Ticket '.$ticket->ticket_number;
         $body = "Guten Tag,\n\nanbei erhalten Sie den Arbeitsbericht zu Ihrem Service-Ticket "
             .$ticket->ticket_number.".\n\nBei Fragen stehen wir gerne zur Verfuegung.\n\nMit freundlichen Gruessen";

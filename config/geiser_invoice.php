@@ -26,4 +26,8 @@ return [
         'subject' => env('GEISER_INVOICE_MAIL_SUBJECT', 'Rechnung - {serials}'),
         'body' => env('GEISER_INVOICE_MAIL_BODY', "Guten Tag,\n\nanbei erhalten Sie die Rechnung {invoice_number} fuer Ticket {ticket}.\nSeriennummer(n): {serials}\n\nViele Gruesse"),
     ],
+
+    'work_report_mail' => [
+        'from_name' => env('GEISER_WORK_REPORT_MAIL_FROM_NAME', 'Il Coccolino'),
+    ],
 ];
