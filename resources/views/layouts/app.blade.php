@@ -21,6 +21,7 @@
             <a href="{{ route('machine-documents.index') }}" @class(['active' => request()->routeIs('machine-documents.*')])>PDFs</a>
             <a href="{{ route('service-defaults.index') }}" @class(['active' => request()->routeIs('service-defaults.*')])>Service</a>
             <a href="{{ route('portal-accounts.index') }}" @class(['active' => request()->routeIs('portal-accounts.*')])>Portale</a>
+            <a href="{{ route('interne-tickets.index') }}" @class(['active' => request()->routeIs('interne-tickets.*')])>Intern</a>
             <form method="post" action="{{ route('admin.logout') }}" style="display:inline;">
                 @csrf
                 <button type="submit" class="btn secondary" style="margin-left: 10px;">Abmelden</button>
