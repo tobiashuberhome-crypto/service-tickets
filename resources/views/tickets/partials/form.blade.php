@@ -217,4 +217,8 @@
             <option value="{{ $value }}" @selected(old('status', $ticket->status ?: \App\Models\Ticket::STATUS_OPEN) === $value)>{{ $label }}</option>
         @endforeach
     </select>
+    <label class="check-row" style="margin-top: 10px;">
+        <input type="checkbox" name="machine_returned" value="1" @checked(old('machine_returned', $ticket->machine_returned))>
+        Maschine ausgegeben
+    </label>
 </div>

@@ -27,10 +27,12 @@ class TicketController extends Controller
     {
         $status = $request->query('status');
         $search = trim((string) $request->query('q'));
+        $hideReturned = $request->boolean('hide_returned');
 
         $tickets = Ticket::query()
             ->with(['customerMachine', 'customerPortalAccount'])
             ->when(array_key_exists($status, Ticket::statusOptions()), fn ($query) => $query->where('status', $status))
+            ->when($hideReturned, fn ($query) => $query->where('machine_returned', false))
             ->when($search !== '', function ($query) use ($search): void {
                 $query->where(function ($searchQuery) use ($search): void {
                     $searchQuery->where('ticket_number', 'like', '%'.$search.'%')
@@ -103,6 +105,7 @@ class TicketController extends Controller
             'statuses' => Ticket::statusOptions(),
             'activeStatus' => $status,
             'search' => $search,
+            'hideReturned' => $hideReturned,
         ]);
     }
 
@@ -272,6 +275,7 @@ class TicketController extends Controller
             $ticket->forceFill([
                 'status' => $data['status'],
                 'completed_at' => $isNowDone ? ($ticket->completed_at ?? now()) : null,
+                'machine_returned' => $request->boolean('machine_returned'),
                 'sync_status' => Ticket::SYNC_PENDING,
                 'sync_message' => null,
             ])->save();
@@ -290,6 +294,7 @@ class TicketController extends Controller
             'cleaning' => $request->boolean('cleaning'),
             'repair_enabled' => $request->boolean('repair_enabled'),
             'spare_part_order_required' => $request->boolean('spare_part_order_required'),
+            'machine_returned' => $request->boolean('machine_returned'),
             'error_description' => $data['error_description'] ?? null,
             'technician_note' => $data['technician_note'] ?? null,
             'acceptance_date' => $data['acceptance_date'],

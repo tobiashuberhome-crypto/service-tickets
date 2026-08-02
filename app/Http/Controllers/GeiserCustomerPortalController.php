@@ -599,6 +599,7 @@ class GeiserCustomerPortalController extends Controller
             'accessory_other' => ['nullable', 'string', 'max:255'],
             'repair_approval_limit' => ['nullable', 'numeric', 'min:0', 'max:999999.99'],
             'intake_note' => ['nullable', 'string'],
+            'machine_returned' => ['nullable', 'boolean'],
             'estimate_qty_tech' => ['nullable', 'numeric', 'min:0', 'max:999.99'],
             'estimate_qty_service_fee' => ['nullable', 'numeric', 'min:0', 'max:999.99'],
             'estimate_qty_vde' => ['nullable', 'numeric', 'min:0', 'max:999.99'],
@@ -696,6 +697,7 @@ class GeiserCustomerPortalController extends Controller
             'error_description' => $errorDescription,
             'customer_portal_estimate_lines' => $estimateLines,
             'customer_portal_estimate_total' => $estimateTotal,
+            'machine_returned' => $request->boolean('machine_returned'),
         ];
         $newPhotoPath = $this->storeCustomerPhoto($request);
         if ($newPhotoPath !== null) {

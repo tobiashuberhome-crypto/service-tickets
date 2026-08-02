@@ -60,6 +60,12 @@
                 <a class="btn secondary" href="{{ route('tickets.index') }}">Zuruecksetzen</a>
             </div>
         </div>
+        <div style="margin-top: 8px;">
+            <label class="check-row">
+                <input type="checkbox" name="hide_returned" value="1" @checked($hideReturned) onchange="this.form.submit()">
+                Ausgegebene Maschinen ausblenden
+            </label>
+        </div>
     </form>
 
     <div style="height: 18px;"></div>

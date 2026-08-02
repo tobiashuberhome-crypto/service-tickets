@@ -23,6 +23,9 @@
             @if ($ticket->created_via_customer_portal)
                 <span class="badge">Kundenportal</span>
             @endif
+            @if ($ticket->machine_returned)
+                <div class="alert success" style="margin-bottom: 0;">✓ Maschine wurde ausgegeben</div>
+            @endif
             <a class="btn secondary" id="invoice-open-btn" href="{{ route('tickets.geiser-invoice', $ticket) }}" data-mail-url="{{ route('tickets.geiser-invoice', ['ticket' => $ticket, 'send_mail' => 1]) }}" target="_blank" rel="noopener">Rechnung</a>
             <a class="btn secondary" href="{{ route('tickets.index') }}">Zurueck</a>
         </div>
