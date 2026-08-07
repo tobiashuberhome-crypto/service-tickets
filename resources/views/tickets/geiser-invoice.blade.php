@@ -137,13 +137,21 @@
                     <td colspan="6" class="amount"><strong>Gesamt netto</strong></td>
                     <td class="amount"><strong>{{ number_format($totalNet, 2, ',', '.') }} EUR</strong></td>
                 </tr>
+                <tr>
+                    <td colspan="6" class="amount"><strong>{{ $vatLabel }}</strong></td>
+                    <td class="amount">{{ number_format($totalVat, 2, ',', '.') }} EUR</td>
+                </tr>
+                <tr>
+                    <td colspan="6" class="amount"><strong>Gesamt brutto</strong></td>
+                    <td class="amount"><strong>{{ number_format($totalGross, 2, ',', '.') }} EUR</strong></td>
+                </tr>
             </tfoot>
         </table>
         <p class="muted" style="margin-top: 6px;">Auf Ersatzteile wird automatisch 20 % Rabatt gewaehrt. Arbeitsleistungen bleiben unveraendert.</p>
     </div>
 
     <div class="section">
-        <h2>Copy-&-Paste-Textblaecke je Position</h2>
+        <h2>Copy-&-Paste-Textblöcke je Position</h2>
         <table class="table">
             <thead>
                 <tr>

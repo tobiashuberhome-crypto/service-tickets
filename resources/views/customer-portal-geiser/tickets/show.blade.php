@@ -8,6 +8,13 @@
         </div>
         <div class="button-row">
             <a class="btn secondary" href="{{ route('geiser-portal.tickets.print', $ticket) }}" target="_blank" rel="noopener">Ticket drucken</a>
+            <a class="btn secondary" href="{{ route('geiser-portal.tickets.work-report', $ticket) }}" target="_blank" rel="noopener">Arbeitsbericht PDF</a>
+            @if (($customerEmail ?? '') !== '')
+                <form method="post" action="{{ route('geiser-portal.tickets.work-report.mail', $ticket) }}" style="display:inline;">
+                    @csrf
+                    <button class="btn secondary" type="submit">Arbeitsbericht per E-Mail</button>
+                </form>
+            @endif
             <a class="btn secondary" href="{{ route('geiser-portal.dashboard') }}">Zurueck zur Übersicht</a>
         </div>
     </div>
@@ -205,12 +212,25 @@
                     </div>
                 </div>
 
+                <div style="margin-top: 8px;">
+                    <label class="check-row">
+                        <input type="checkbox" name="machine_returned" value="1" @checked(old('machine_returned', $ticket->machine_returned)) form="ticket-edit-form">
+                        Maschine ausgegeben
+                    </label>
+                </div>
+
                 <button class="btn" type="submit" form="ticket-edit-form">Änderungen speichern</button>
             </form>
         @else
             <div>
                 <p>{{ nl2br(e($ticket->error_description)) }}</p>
             </div>
+
+            @if ($ticket->machine_returned)
+                <div class="alert alert-success" style="margin-top: 1rem;">
+                    ✓ Maschine wurde ausgegeben
+                </div>
+            @endif
             
             <h3 style="margin-top: 1.5rem;">Kontaktinformationen</h3>
             <div class="grid grid-2">

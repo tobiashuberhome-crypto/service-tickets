@@ -8,6 +8,7 @@
         h1 { margin: 0 0 6px; font-size: 20px; }
         .muted { color: #6b7280; }
         .box { margin-bottom: 18px; }
+        .amount { text-align: right; white-space: nowrap; }
         table { width: 100%; border-collapse: collapse; margin-top: 8px; }
         th, td { border: 1px solid #d1d5db; padding: 6px 8px; text-align: left; vertical-align: top; }
         th { background: #f3f4f6; }
@@ -21,6 +22,10 @@
     </div>
 
     @foreach ($tickets as $ticket)
+        @php
+            $summary = $invoiceSummaryByTicket[(string) $ticket->id] ?? null;
+            $ticketGross = (float) ($summary['totalGross'] ?? 0);
+        @endphp
         <div class="box">
             <strong>Ticket: {{ $ticket->dolibarr_order_ref ?: $ticket->ticket_number }}</strong><br>
             Kunde: {{ $ticket->customer_name_snapshot }}<br>
@@ -66,8 +71,25 @@
                         </tr>
                     @endif
                 </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="2"><strong>Brutto-Summe Ticket</strong></td>
+                        <td class="amount"><strong>{{ number_format($ticketGross, 2, ',', '.') }} EUR</strong></td>
+                    </tr>
+                </tfoot>
             </table>
         </div>
     @endforeach
+
+    <div class="box">
+        <table>
+            <tbody>
+                <tr>
+                    <td style="width: 70%;"><strong>Gesamt-Brutto (alle Tickets)</strong></td>
+                    <td class="amount"><strong>{{ number_format((float) $deliveryTotalGross, 2, ',', '.') }} EUR</strong></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
 </body>
 </html>

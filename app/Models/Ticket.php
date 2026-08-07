@@ -52,6 +52,7 @@ class Ticket extends Model
         'sync_status',
         'sync_message',
         'completed_at',
+        'machine_returned',
         'cleaning',
     ];
 
@@ -65,6 +66,7 @@ class Ticket extends Model
         'acceptance_date' => 'date',
         'target_date' => 'date',
         'completed_at' => 'datetime',
+        'machine_returned' => 'boolean',
         'cleaning' => 'boolean',
         'dolibarr_invoice_id' => 'integer',
     ];

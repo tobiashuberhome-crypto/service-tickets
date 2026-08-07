@@ -23,6 +23,9 @@
             @if ($ticket->created_via_customer_portal)
                 <span class="badge">Kundenportal</span>
             @endif
+            @if ($ticket->machine_returned)
+                <div class="alert success" style="margin-bottom: 0;">✓ Maschine wurde ausgegeben</div>
+            @endif
             <a class="btn secondary" id="invoice-open-btn" href="{{ route('tickets.geiser-invoice', $ticket) }}" data-mail-url="{{ route('tickets.geiser-invoice', ['ticket' => $ticket, 'send_mail' => 1]) }}" target="_blank" rel="noopener">Rechnung</a>
             <a class="btn secondary" href="{{ route('tickets.index') }}">Zurueck</a>
         </div>
@@ -125,9 +128,7 @@
             @include('tickets.partials.form', ['ticket' => $ticket])
 
             <div class="button-row">
-                @if (! $ticket->isDone())
-                    <button class="btn" type="submit">Speichern</button>
-                @endif
+                <button class="btn" type="submit">Speichern</button>
                 @if ($ticket->status === \App\Models\Ticket::STATUS_OPEN)
                     <form method="post" action="{{ route('tickets.activate-order', $ticket) }}" style="display:inline;">
                         @csrf
@@ -411,6 +412,19 @@
                         </tbody>
                     </table>
                 </div>
+
+                @if ($invoiceSummary['invoiceLines']->isNotEmpty())
+                    <div class="panel panel-body" style="margin-top: 16px;">
+                        <h2>Berechnete Rechnungssumme im Ticket-System</h2>
+                        <div class="stack">
+                            <div><strong>Summe VK:</strong> {{ number_format((float) $invoiceSummary['totalOriginalNet'], 2, ',', '.') }} EUR</div>
+                            <div><strong>Rabatt gesamt:</strong> - {{ number_format((float) $invoiceSummary['totalDiscountAmount'], 2, ',', '.') }} EUR</div>
+                            <div><strong>Gesamt netto:</strong> {{ number_format((float) $invoiceSummary['totalNet'], 2, ',', '.') }} EUR</div>
+                            <div><strong>{{ $invoiceSummary['vatLabel'] }}:</strong> {{ number_format((float) $invoiceSummary['totalVat'], 2, ',', '.') }} EUR</div>
+                            <div><strong>Gesamt brutto:</strong> {{ number_format((float) $invoiceSummary['totalGross'], 2, ',', '.') }} EUR</div>
+                        </div>
+                    </div>
+                @endif
             </div>
 
             @if ($ticket->serviceLines->isNotEmpty())

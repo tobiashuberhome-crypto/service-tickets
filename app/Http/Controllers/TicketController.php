@@ -9,6 +9,7 @@ use App\Models\Ticket;
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Services\Dolibarr\DolibarrClient;
 use App\Services\Tickets\DolibarrOrderSyncService;
+use App\Services\Tickets\GeiserInvoiceCalculator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -26,10 +27,12 @@ class TicketController extends Controller
     {
         $status = $request->query('status');
         $search = trim((string) $request->query('q'));
+        $hideReturned = $request->boolean('hide_returned');
 
         $tickets = Ticket::query()
             ->with(['customerMachine', 'customerPortalAccount'])
             ->when(array_key_exists($status, Ticket::statusOptions()), fn ($query) => $query->where('status', $status))
+            ->when($hideReturned, fn ($query) => $query->where('machine_returned', false))
             ->when($search !== '', function ($query) use ($search): void {
                 $query->where(function ($searchQuery) use ($search): void {
                     $searchQuery->where('ticket_number', 'like', '%'.$search.'%')
@@ -102,6 +105,7 @@ class TicketController extends Controller
             'statuses' => Ticket::statusOptions(),
             'activeStatus' => $status,
             'search' => $search,
+            'hideReturned' => $hideReturned,
         ]);
     }
 
@@ -159,7 +163,7 @@ class TicketController extends Controller
         return redirect()->route('tickets.show', $ticket)->with('status', 'Ticket gespeichert.');
     }
 
-    public function show(Request $request, Ticket $ticket, DolibarrClient $dolibarr): View
+    public function show(Request $request, Ticket $ticket, DolibarrClient $dolibarr, GeiserInvoiceCalculator $invoiceCalculator): View
     {
         $ticket->load(['customerMachine', 'customerMachineProfile', 'parts', 'serviceLines', 'customerPortalAccount', 'messages.attachments']);
 
@@ -255,13 +259,28 @@ class TicketController extends Controller
             'partMachineRef' => $partMachineRef,
             'partsWarning' => $partsWarning,
             'documents' => $documents,
+            'invoiceSummary' => $invoiceCalculator->summarize($ticket),
         ]);
     }
 
     public function update(Request $request, Ticket $ticket, DolibarrOrderSyncService $sync): RedirectResponse
     {
         if ($ticket->isDone()) {
-            return back()->with('warning', 'Erledigte Tickets koennen nicht mehr bearbeitet werden.');
+            $data = $request->validate([
+                'status' => ['required', 'in:'.implode(',', array_keys(Ticket::statusOptions()))],
+            ]);
+
+            $isNowDone = in_array($data['status'], [Ticket::STATUS_DONE, Ticket::STATUS_DELIVERED], true);
+
+            $ticket->forceFill([
+                'status' => $data['status'],
+                'completed_at' => $isNowDone ? ($ticket->completed_at ?? now()) : null,
+                'machine_returned' => $request->boolean('machine_returned'),
+                'sync_status' => Ticket::SYNC_PENDING,
+                'sync_message' => null,
+            ])->save();
+
+            return redirect()->route('tickets.show', $ticket)->with('status', 'Ticket-Status aktualisiert.');
         }
 
         $data = $this->validatedTicketData($request);
@@ -275,6 +294,7 @@ class TicketController extends Controller
             'cleaning' => $request->boolean('cleaning'),
             'repair_enabled' => $request->boolean('repair_enabled'),
             'spare_part_order_required' => $request->boolean('spare_part_order_required'),
+            'machine_returned' => $request->boolean('machine_returned'),
             'error_description' => $data['error_description'] ?? null,
             'technician_note' => $data['technician_note'] ?? null,
             'acceptance_date' => $data['acceptance_date'],
@@ -409,7 +429,7 @@ class TicketController extends Controller
         return redirect()->route('tickets.show', $ticket)->with('status', 'Rechnung in Dolibarr aktiviert.');
     }
 
-    public function generateDeliveryNote(Request $request)
+    public function generateDeliveryNote(Request $request, GeiserInvoiceCalculator $invoiceCalculator)
     {
         $data = $request->validate([
             'ticket_ids' => ['required', 'array', 'min:1'],
@@ -430,10 +450,20 @@ class TicketController extends Controller
             ->whereIn('id', $tickets->pluck('id')->all())
             ->update(['status' => Ticket::STATUS_DELIVERED]);
 
+        $invoiceSummaryByTicket = $tickets
+            ->mapWithKeys(fn (Ticket $ticket): array => [(string) $ticket->id => $invoiceCalculator->summarize($ticket)])
+            ->all();
+        $deliveryTotalGross = round(
+            (float) collect($invoiceSummaryByTicket)->sum(fn (array $summary): float => (float) ($summary['totalGross'] ?? 0)),
+            2
+        );
+
         $fileName = 'lieferschein-'.now()->format('Ymd-His').'.pdf';
         $payload = [
             'tickets' => $tickets,
             'createdAt' => now(),
+            'invoiceSummaryByTicket' => $invoiceSummaryByTicket,
+            'deliveryTotalGross' => $deliveryTotalGross,
         ];
 
         if (! class_exists(Pdf::class)) {
@@ -445,57 +475,12 @@ class TicketController extends Controller
         return $pdf->download($fileName);
     }
 
-    public function generateGeiserInvoice(Request $request, Ticket $ticket, DolibarrClient $dolibarr)
+    public function generateGeiserInvoice(Request $request, Ticket $ticket, DolibarrClient $dolibarr, GeiserInvoiceCalculator $invoiceCalculator)
     {
         $ticket->load(['customerMachine', 'customerMachineProfile', 'parts', 'serviceLines']);
         $invoiceRecipient = $dolibarr->getCustomer((int) $ticket->dolibarr_customer_id);
-
-        $invoiceLines = collect();
-
-        foreach ($ticket->serviceLines as $line) {
-            $description = trim((string) $line->label_snapshot);
-            $isNmService = strcasecmp(trim((string) $line->product_ref), 'NM-Service') === 0
-                || strcasecmp($description, 'NM-Service') === 0;
-
-            $invoiceLines->push([
-                'type' => 'Leistung',
-                'reference' => $line->product_ref ?: '-',
-                'description' => $description !== '' ? $description : 'Serviceleistung',
-                'quantity' => (float) $line->quantity,
-                'unit_price' => (float) $line->sales_price_snapshot,
-                'discount_rate' => $isNmService ? 0.0 : 0.20,
-            ]);
-        }
-
-        foreach ($ticket->parts as $part) {
-            $partLabel = trim((string) $part->label_snapshot);
-            $partRef = trim((string) $part->part_ref_snapshot);
-            $description = trim($partRef !== '' ? $partRef.' - '.$partLabel : $partLabel);
-
-            $invoiceLines->push([
-                'type' => 'Ersatzteil',
-                'reference' => $partRef !== '' ? $partRef : '-',
-                'description' => $description !== '' ? $description : 'Ersatzteil',
-                'quantity' => (float) $part->quantity,
-                'unit_price' => (float) $part->sales_price_snapshot,
-                'discount_rate' => 0.20,
-            ]);
-        }
-
-        $invoiceLines = $invoiceLines
-            ->map(function (array $line) use ($ticket): array {
-                $line['line_total'] = round($line['quantity'] * $line['unit_price'], 2);
-                $line['discount_amount'] = round($line['line_total'] * (float) $line['discount_rate'], 2);
-                $line['discounted_total'] = round($line['line_total'] - $line['discount_amount'], 2);
-                $line['copy_text'] = $this->buildGeiserInvoiceCopyText($ticket, $line['description']);
-
-                return $line;
-            })
-            ->values();
-
-        $totalOriginalNet = (float) $invoiceLines->sum('line_total');
-        $totalDiscountAmount = (float) $invoiceLines->sum('discount_amount');
-        $totalNet = (float) $invoiceLines->sum('discounted_total');
+        $invoiceSummary = $invoiceCalculator->summarize($ticket);
+        $invoiceLines = $invoiceCalculator->withCopyTexts($ticket, $invoiceSummary['invoiceLines']);
         $sender = config('geiser_invoice.sender', []);
         $bank = config('geiser_invoice.bank', []);
         $footerNote = (string) config('geiser_invoice.footer_note', '');
@@ -511,14 +496,13 @@ class TicketController extends Controller
             'ticket' => $ticket,
             'invoiceRecipient' => $invoiceRecipient,
             'invoiceLines' => $invoiceLines,
-            'totalOriginalNet' => $totalOriginalNet,
-            'totalDiscountAmount' => $totalDiscountAmount,
-            'totalNet' => $totalNet,
             'sender' => $sender,
             'bank' => $bank,
             'footerNote' => $footerNote,
             'createdAt' => now(),
         ];
+        $payload = array_merge($payload, $invoiceSummary);
+        $payload['invoiceLines'] = $invoiceLines;
 
         if (! class_exists(Pdf::class)) {
             return response()->view('tickets.geiser-invoice', $payload);
@@ -565,19 +549,6 @@ class TicketController extends Controller
         }
 
         return $data;
-    }
-
-    private function buildGeiserInvoiceCopyText(Ticket $ticket, string $articleDescription): string
-    {
-        $manufacturer = trim((string) ($ticket->customerMachine?->manufacturer_snapshot ?: $ticket->customerMachineProfile?->manufacturer_snapshot));
-        $machineRef = trim((string) ($ticket->customerMachine?->machine_ref_snapshot ?: $ticket->customerMachineProfile?->machine_ref_snapshot));
-        $serialNumber = trim((string) ($ticket->customerMachine?->serial_number ?: $ticket->customerMachineProfile?->serial_number));
-
-        $machineLabel = trim(($manufacturer !== '' ? $manufacturer : 'Hersteller unbekannt').($machineRef !== '' ? ' '.$machineRef : ''));
-        $serialLabel = $serialNumber !== '' ? $serialNumber : 'Seriennummer unbekannt';
-        $descriptionLabel = trim($articleDescription) !== '' ? trim($articleDescription) : 'Position ohne Bezeichnung';
-
-        return $machineLabel.' - '.$serialLabel.' - '.$descriptionLabel;
     }
 
     private function sendGeiserInvoiceMail(Ticket $ticket, string $fileName, string $pdfBinary): void

@@ -35,6 +35,9 @@
         </div>
         <div class="button-row">
             <span class="badge {{ $ticket->sync_status }}">{{ $ticket->syncStatusLabel() }}</span>
+            @if ($ticket->machine_returned)
+                <span class="badge" style="background:#16a34a; color:#fff;">✓ Ausgegeben</span>
+            @endif
             @if ($ticket->spare_part_order_required)
                 <span class="badge order-required">Ersatzteilbestellung</span>
             @endif

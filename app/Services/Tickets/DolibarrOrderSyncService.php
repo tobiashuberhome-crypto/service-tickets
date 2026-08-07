@@ -153,7 +153,7 @@ class DolibarrOrderSyncService
                 'fk_product' => (int) $product['id'],
                 'qty' => (float) $line->quantity,
                 'subprice' => (float) ($line->sales_price_snapshot ?? $product['price'] ?? 0),
-                'tva_tx' => (float) ($line->vat_rate_snapshot ?? $product['vat_rate'] ?? 19),
+                'tva_tx' => $this->normalizeVatRate($line->vat_rate_snapshot ?? $product['vat_rate'] ?? 19),
                 'desc' => $line->label_snapshot,
                 'price_base_type' => 'HT',
                 'product_type' => 1,
@@ -170,7 +170,7 @@ class DolibarrOrderSyncService
                 'desc' => $description,
                 'qty' => (float) $line->quantity,
                 'subprice' => (float) $line->sales_price_snapshot,
-                'tva_tx' => (float) $line->vat_rate_snapshot,
+                'tva_tx' => $this->normalizeVatRate($line->vat_rate_snapshot),
                 'price_base_type' => 'HT',
                 'product_type' => 0,
             ];
@@ -239,7 +239,7 @@ class DolibarrOrderSyncService
             'product_id' => $product['id'],
             'quantity' => $line->quantity,
             'unit_price' => $line->sales_price_snapshot ?? $product['price'] ?? 0,
-            'vat_rate' => $line->vat_rate_snapshot ?? $product['vat_rate'] ?? 19,
+            'vat_rate' => $this->normalizeVatRate($line->vat_rate_snapshot ?? $product['vat_rate'] ?? 19),
             'description' => $line->label_snapshot,
             'product_type' => 1,
         ]);
@@ -259,7 +259,7 @@ class DolibarrOrderSyncService
             'description' => $description,
             'quantity' => $line->quantity,
             'unit_price' => $line->sales_price_snapshot,
-            'vat_rate' => $line->vat_rate_snapshot,
+            'vat_rate' => $this->normalizeVatRate($line->vat_rate_snapshot),
         ]);
 
         $line->forceFill(['dolibarr_order_line_id' => $lineId])->save();
@@ -275,5 +275,12 @@ class DolibarrOrderSyncService
             'message' => $message,
             'payload' => $payload,
         ]);
+    }
+
+    private function normalizeVatRate(mixed $vatRate): float
+    {
+        $rate = (float) $vatRate;
+
+        return $rate > 0 ? $rate : 19.0;
     }
 }

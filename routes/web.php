@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\InternesTicketController;
 use App\Http\Controllers\PortalAccountController;
 use App\Http\Controllers\CustomerPortalController;
 use App\Http\Controllers\EasyAppointmentsWebhookController;
@@ -62,8 +63,11 @@ Route::prefix('/kundenportal/geiser')->group(function (): void {
         Route::get('/tickets/neu', [GeiserCustomerPortalController::class, 'createTicket'])->name('geiser-portal.tickets.create');
         Route::post('/tickets', [GeiserCustomerPortalController::class, 'storeTicket'])->name('geiser-portal.tickets.store');
         Route::get('/tickets/{ticket}/print', [GeiserCustomerPortalController::class, 'printTicket'])->name('geiser-portal.tickets.print');
+        Route::get('/tickets/{ticket}/work-report', [GeiserCustomerPortalController::class, 'generateWorkReport'])->name('geiser-portal.tickets.work-report');
+        Route::post('/tickets/{ticket}/work-report/send-mail', [GeiserCustomerPortalController::class, 'mailWorkReport'])->name('geiser-portal.tickets.work-report.mail');
         Route::get('/tickets/{ticket}', [GeiserCustomerPortalController::class, 'showTicket'])->name('geiser-portal.tickets.show');
         Route::put('/tickets/{ticket}', [GeiserCustomerPortalController::class, 'updateTicket'])->name('geiser-portal.tickets.update');
+        Route::put('/tickets/{ticket}/machine-returned', [GeiserCustomerPortalController::class, 'updateMachineReturned'])->name('geiser-portal.tickets.machine-returned');
         Route::post('/tickets/{ticket}/messages', [TicketMessageController::class, 'storeGeiser'])->name('geiser-portal.tickets.messages.store');
         Route::get('/tickets/{ticket}/messages/{message}/attachments/{attachment}', [TicketMessageController::class, 'downloadGeiserAttachment'])->name('geiser-portal.tickets.messages.attachments.download');
         Route::post('/ocr-scan', [GeiserCustomerPortalController::class, 'scanTicketImage'])->name('geiser-portal.ocr.scan');
@@ -141,4 +145,7 @@ Route::middleware('admin.auth')->group(function (): void {
     Route::resource('service-defaults', ServiceDefaultController::class)->only(['index', 'store', 'destroy']);
 
     Route::resource('portal-accounts', PortalAccountController::class)->only(['index', 'create', 'store', 'edit', 'update', 'destroy']);
+
+    Route::get('/intern/tickets', [InternesTicketController::class, 'index'])->name('interne-tickets.index');
+    Route::patch('/intern/tickets/{internesTicket}/status', [InternesTicketController::class, 'updateStatus'])->name('interne-tickets.status');
 });

@@ -131,13 +131,24 @@ class DolibarrClient
 
     public function createMachineProduct(array $payload): array
     {
+        $barcode = trim((string) ($payload['barcode'] ?? ''));
+        if ($barcode === '') {
+            $barcode = trim((string) ($payload['ref'] ?? ''));
+        }
+        if ($barcode === '') {
+            $barcode = 'auto';
+        }
+
         $id = $this->extractId($this->request('post', '/products', [
             'ref' => $payload['ref'],
             'label' => $payload['label'] ?? $payload['ref'],
             'type' => 0,
             'status' => 1,
             'status_buy' => 0,
-            'barcode' => $payload['barcode'] ?? $payload['ref'],
+            'barcode' => $barcode,
+            'barcode_type' => $payload['barcode_type'] ?? null,
+            'fk_barcode_type' => $payload['barcode_type'] ?? null,
+            'barcode_type_code' => $payload['barcode_type_code'] ?? null,
             'array_options' => [
                 'options_hersteller' => $payload['manufacturer'] ?? null,
             ],

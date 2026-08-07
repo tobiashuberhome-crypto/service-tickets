@@ -22,4 +22,6 @@ return [
         'customer_name' => env('EASYAPPOINTMENTS_CUSTOMER_NAME', 'EasyAppointments'),
         'default_machine_ref' => env('EASYAPPOINTMENTS_DEFAULT_MACHINE_REF', 'Terminbuchung'),
     ],
+
+    'internal_api_token' => env('INTERNAL_API_TOKEN'),
 ];

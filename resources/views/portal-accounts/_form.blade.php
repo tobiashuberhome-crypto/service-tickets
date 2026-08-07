@@ -42,12 +42,13 @@
 </div>
 
 <div class="panel panel-body stack">
-    <h3 style="margin:0">Dolibarr-Verknüpfung <span class="muted" style="font-weight:400; font-size:.85rem;">(optional)</span></h3>
+    <h3 style="margin:0">Dolibarr-Verknüpfung</h3>
     <div class="grid grid-2" style="gap:.75rem;">
         <div>
-            <label for="dolibarr_thirdparty_id">Dolibarr Kunden-ID</label>
+            <label for="dolibarr_thirdparty_id">Dolibarr Kunden-ID *</label>
             <input id="dolibarr_thirdparty_id" name="dolibarr_thirdparty_id" type="number"
-                   value="{{ old('dolibarr_thirdparty_id', $account->dolibarr_thirdparty_id) }}">
+                   value="{{ old('dolibarr_thirdparty_id', $account->dolibarr_thirdparty_id) }}" required min="1">
+            @error('dolibarr_thirdparty_id')<p class="text-danger">{{ $message }}</p>@enderror
         </div>
         <div>
             <label for="dolibarr_customer_code">Kundennummer</label>
