@@ -1,0 +1,76 @@
+FAILED: app__Http__Controllers__AdminAuthController.php.md
+Der Remoteserver hat einen Fehler zurückgegeben: (403) Unzulässig.
+{"ok":false,"error":"authorization_error","status":403,"message":"Authorization error"}
+
+FAILED: app__Http__Controllers__Controller.php.md
+Der Remoteserver hat einen Fehler zurückgegeben: (403) Unzulässig.
+{"ok":false,"error":"authorization_error","status":403,"message":"Authorization error"}
+
+FAILED: app__Http__Controllers__CustomerPortalController.php.md
+Der Remoteserver hat einen Fehler zurückgegeben: (403) Unzulässig.
+{"ok":false,"error":"authorization_error","status":403,"message":"Authorization error"}
+
+FAILED: app__Http__Controllers__AdminAuthController.php.md
+Der Remoteserver hat einen Fehler zurückgegeben: (400) Ungültige Anforderung.
+{"ok":false,"error":"validation_error","status":400,"message":"parentDocumentId: Invalid UUID"}
+
+FAILED: app__Http__Controllers__Controller.php.md
+Der Remoteserver hat einen Fehler zurückgegeben: (400) Ungültige Anforderung.
+{"ok":false,"error":"validation_error","status":400,"message":"parentDocumentId: Invalid UUID"}
+
+FAILED: app__Http__Controllers__CustomerPortalController.php.md
+Der Remoteserver hat einen Fehler zurückgegeben: (400) Ungültige Anforderung.
+{"ok":false,"error":"validation_error","status":400,"message":"parentDocumentId: Invalid UUID"}
+
+FAILED: app__Http__Controllers__AdminAuthController.php.md
+Der Remoteserver hat einen Fehler zurückgegeben: (403) Unzulässig.
+{"ok":false,"error":"authorization_error","status":403,"message":"Authorization error"}
+
+FAILED: app__Http__Controllers__Controller.php.md
+Der Remoteserver hat einen Fehler zurückgegeben: (403) Unzulässig.
+{"ok":false,"error":"authorization_error","status":403,"message":"Authorization error"}
+
+FAILED: app__Http__Controllers__CustomerPortalController.php.md
+Der Remoteserver hat einen Fehler zurückgegeben: (403) Unzulässig.
+{"ok":false,"error":"authorization_error","status":403,"message":"Authorization error"}
+
+FAILED: app__Http__Controllers__AdminAuthController.php.md
+Der Remoteserver hat einen Fehler zurückgegeben: (403) Unzulässig.
+{"ok":false,"error":"authorization_error","status":403,"message":"Authorization error"}
+
+FAILED: app__Http__Controllers__Controller.php.md
+Der Remoteserver hat einen Fehler zurückgegeben: (403) Unzulässig.
+{"ok":false,"error":"authorization_error","status":403,"message":"Authorization error"}
+
+FAILED: app__Http__Controllers__CustomerPortalController.php.md
+Der Remoteserver hat einen Fehler zurückgegeben: (403) Unzulässig.
+{"ok":false,"error":"authorization_error","status":403,"message":"Authorization error"}
+
+FAILED: app__Http__Controllers__GeiserCustomerPortalController.php.md
+Der Remoteserver hat einen Fehler zurückgegeben: (400) Ungültige Anforderung.
+{"ok":false,"error":"","status":400,"message":"Expected ',' or '}' after property value in JSON at position 18285 (line 3 column 18204)"}
+
+FAILED: app__Http__Controllers__GeiserCustomerPortalController.php.md
+Der Remoteserver hat einen Fehler zurückgegeben: (400) Ungültige Anforderung.
+{"ok":false,"error":"","status":400,"message":"Expected ',' or '}' after property value in JSON at position 18285 (line 3 column 18204)"}
+
+FAILED: app__Services__Ocr__OcrDataParser.php.md
+Der Remoteserver hat einen Fehler zurückgegeben: (400) Ungültige Anforderung.
+{"ok":false,"error":"","status":400,"message":"Expected ',' or '}' after property value in JSON at position 4323 (line 3 column 4263)"}
+
+FAILED: database__migrations__2026_06_24_000022_add_machine_ref_to_machine_spare_part_compatibilities_table.php.md
+Der Remoteserver hat einen Fehler zurückgegeben: (400) Ungültige Anforderung.
+{"ok":false,"error":"validation_error","status":400,"message":"Document title must be 100 characters or less (title)"}
+
+FAILED: resources__views__customer-portal-geiser__tickets__create.blade.php.md
+Der Remoteserver hat einen Fehler zurückgegeben: (400) Ungültige Anforderung.
+{"ok":false,"error":"","status":400,"message":"Expected ',' or '}' after property value in JSON at position 1221 (line 3 column 1131)"}
+
+FAILED: resources__views__customer-portal-geiser__tickets__show.blade.php.md
+Der Remoteserver hat einen Fehler zurückgegeben: (400) Ungültige Anforderung.
+{"ok":false,"error":"","status":400,"message":"Expected ',' or '}' after property value in JSON at position 3899 (line 3 column 3811)"}
+
+FAILED: resources__views__tickets__show.blade.php.md
+Der Remoteserver hat einen Fehler zurückgegeben: (400) Ungültige Anforderung.
+{"ok":false,"error":"","status":400,"message":"Expected ',' or '}' after property value in JSON at position 2252 (line 3 column 2188)"}
+
