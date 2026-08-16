@@ -5,7 +5,11 @@
             name="ticket_ids[]"
             value="{{ $ticket->id }}"
             class="delivery-note-checkbox"
+<<<<<<< HEAD
             form="delivery-note-form"
+=======
+            form="ticket-selection-form"
+>>>>>>> old-ticket-system/main
             onclick="event.stopPropagation();"
             onmousedown="event.stopPropagation();"
             style="width: 16px; height: 16px; margin: 0;"

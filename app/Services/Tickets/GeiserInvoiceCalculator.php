@@ -19,11 +19,19 @@ class GeiserInvoiceCalculator
             ->map(fn (array $line): array => $this->calculateLineTotals($line))
             ->values();
 
+<<<<<<< HEAD
         $totalOriginalNet = round((float) $invoiceLines->sum('line_total'), 2);
         $totalDiscountAmount = round((float) $invoiceLines->sum('discount_amount'), 2);
         $totalNet = round((float) $invoiceLines->sum('discounted_total'), 2);
         $totalVat = round((float) $invoiceLines->sum('vat_amount'), 2);
         $totalGross = round($totalNet + $totalVat, 2);
+=======
+        $totalOriginalNet = round((float) $invoiceLines->sum('line_gross'), 2);
+        $totalDiscountAmount = round((float) $invoiceLines->sum('discount_amount_gross'), 2);
+        $totalNet = round((float) $invoiceLines->sum('line_net_after_discount'), 2);
+        $totalVat = round((float) $invoiceLines->sum('vat_amount'), 2);
+        $totalGross = round((float) $invoiceLines->sum('line_gross_after_discount'), 2);
+>>>>>>> old-ticket-system/main
 
         return [
             'invoiceLines' => $invoiceLines,
@@ -72,10 +80,25 @@ class GeiserInvoiceCalculator
 
     private function calculateLineTotals(array $line): array
     {
+<<<<<<< HEAD
         $line['line_total'] = round($line['quantity'] * $line['unit_price'], 2);
         $line['discount_amount'] = round($line['line_total'] * (float) $line['discount_rate'], 2);
         $line['discounted_total'] = round($line['line_total'] - $line['discount_amount'], 2);
         $line['vat_amount'] = round($line['discounted_total'] * ((float) $line['vat_rate'] / 100), 2);
+=======
+        $line['line_gross'] = round($line['quantity'] * $line['unit_price'], 2);
+        $line['discount_amount_gross'] = round($line['line_gross'] * (float) $line['discount_rate'], 2);
+        $line['line_gross_after_discount'] = round($line['line_gross'] - $line['discount_amount_gross'], 2);
+
+        $vatFactor = 1 + (((float) $line['vat_rate']) / 100);
+        $line['line_net_after_discount'] = round($line['line_gross_after_discount'] / $vatFactor, 2);
+        $line['vat_amount'] = round($line['line_gross_after_discount'] - $line['line_net_after_discount'], 2);
+
+        // Backward compatible aliases for existing views/controllers.
+        $line['line_total'] = $line['line_gross'];
+        $line['discount_amount'] = $line['discount_amount_gross'];
+        $line['discounted_total'] = $line['line_gross_after_discount'];
+>>>>>>> old-ticket-system/main
 
         return $line;
     }

@@ -13,6 +13,10 @@ class EnsureCustomerPortalAuth
         if (! $request->session()->has($sessionKey)) {
             $loginRoute = match ($sessionKey) {
                 'geiser_customer_portal_account_id' => 'geiser-portal.login',
+<<<<<<< HEAD
+=======
+                'cibena_customer_portal_account_id' => 'cibena-portal.login',
+>>>>>>> old-ticket-system/main
                 'school_portal_account_id' => 'school-portal.login',
                 default => 'customer-portal.login',
             };

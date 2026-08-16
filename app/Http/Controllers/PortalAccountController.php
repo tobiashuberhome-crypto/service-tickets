@@ -35,6 +35,10 @@ class PortalAccountController extends Controller
             'scopes' => [
                 CustomerPortalAccount::PORTAL_SCOPE_DEFAULT => 'Kunden-Portal',
                 CustomerPortalAccount::PORTAL_SCOPE_GEISER => 'Il Coccolino-Portal',
+<<<<<<< HEAD
+=======
+                CustomerPortalAccount::PORTAL_SCOPE_CIBENA => 'Cibena-Portal',
+>>>>>>> old-ticket-system/main
                 CustomerPortalAccount::PORTAL_SCOPE_SCHOOL => 'Schul-Portal',
             ],
         ]);
@@ -47,6 +51,10 @@ class PortalAccountController extends Controller
             'scopes' => [
                 CustomerPortalAccount::PORTAL_SCOPE_DEFAULT => 'Kunden-Portal',
                 CustomerPortalAccount::PORTAL_SCOPE_GEISER => 'Il Coccolino-Portal',
+<<<<<<< HEAD
+=======
+                CustomerPortalAccount::PORTAL_SCOPE_CIBENA => 'Cibena-Portal',
+>>>>>>> old-ticket-system/main
                 CustomerPortalAccount::PORTAL_SCOPE_SCHOOL => 'Schul-Portal',
             ],
         ]);
@@ -80,6 +88,10 @@ class PortalAccountController extends Controller
             'scopes' => [
                 CustomerPortalAccount::PORTAL_SCOPE_DEFAULT => 'Kunden-Portal',
                 CustomerPortalAccount::PORTAL_SCOPE_GEISER => 'Il Coccolino-Portal',
+<<<<<<< HEAD
+=======
+                CustomerPortalAccount::PORTAL_SCOPE_CIBENA => 'Cibena-Portal',
+>>>>>>> old-ticket-system/main
                 CustomerPortalAccount::PORTAL_SCOPE_SCHOOL => 'Schul-Portal',
             ],
         ]);
@@ -123,7 +135,11 @@ class PortalAccountController extends Controller
     private function validateAccount(Request $request, ?int $ignoreId = null): array
     {
         return $request->validate([
+<<<<<<< HEAD
             'portal_scope' => ['required', 'in:default,geiser,school'],
+=======
+            'portal_scope' => ['required', 'in:default,geiser,cibena,school'],
+>>>>>>> old-ticket-system/main
             'company_name' => ['required', 'string', 'max:255'],
             'contact_name' => ['nullable', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', 'unique:customer_portal_accounts,email'.($ignoreId ? ','.$ignoreId : '')],

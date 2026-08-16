@@ -1,4 +1,4 @@
-@extends('layouts.customer-portal-geiser')
+@extends('layouts.customer-portal-cibena')
 
 @section('content')
     <div class="page-header">
@@ -7,8 +7,8 @@
             <p class="muted">{{ $account->company_name }} @if ($account->dolibarr_customer_code) · Kundennummer {{ $account->dolibarr_customer_code }} @endif · Dolibarr-ID {{ $account->dolibarr_thirdparty_id }}</p>
         </div>
         <div class="button-row">
-            <a class="btn secondary" href="{{ route('geiser-portal.history') }}">Historie suchen</a>
-            <a class="btn" href="{{ route('geiser-portal.tickets.create') }}">Neues Ticket erfassen</a>
+            <a class="btn secondary" href="{{ route('cibena-portal.history') }}">Historie suchen</a>
+            <a class="btn" href="{{ route('cibena-portal.tickets.create') }}">Neues Ticket erfassen</a>
         </div>
     </div>
 
@@ -25,7 +25,7 @@
         </div>
     </div>
 
-    <form class="panel panel-body" method="get" action="{{ route('geiser-portal.dashboard') }}">
+    <form class="panel panel-body" method="get" action="{{ route('cibena-portal.dashboard') }}">
         <label class="check-row">
             <input type="checkbox" name="hide_returned" value="1" @checked($hideReturned) onchange="this.form.submit()">
             Ausgegebene Maschinen ausblenden
@@ -34,7 +34,7 @@
 
     <div class="panel panel-body">
         @if ($tickets->isEmpty())
-            <p class="muted">Es wurden noch keine Tickets ueber das Il Coccolino-Serviceportal erstellt.</p>
+            <p class="muted">Es wurden noch keine Tickets ueber das Cibena-Serviceportal erstellt.</p>
         @else
             <div class="table-wrap">
                 <table>
@@ -52,7 +52,7 @@
                     @foreach ($tickets as $ticket)
                         <tr>
                             <td>
-                                <a href="{{ route('geiser-portal.tickets.show', $ticket) }}">{{ $ticket->ticket_number }}</a>
+                                <a href="{{ route('cibena-portal.tickets.show', $ticket) }}">{{ $ticket->ticket_number }}</a>
                                 @if (!$ticket->created_via_customer_portal)
                                     <span class="badge bg-info">vom Techniker erstellt</span>
                                 @endif
@@ -72,8 +72,6 @@
             </div>
         @endif
     </div>
-<<<<<<< HEAD
-=======
 
     @if ($tickets->isNotEmpty())
         <div class="panel panel-body" style="margin-top: 2rem;">
@@ -83,7 +81,7 @@
                     <p class="muted">Übersicht der Tickets gruppiert nach Annahme-/Erstellungsmonat.</p>
                 </div>
                 <div class="button-row">
-                    <form id="ticket-selection-form" method="post" action="{{ route('geiser-portal.monthly-invoice') }}">
+                    <form id="ticket-selection-form" method="post" action="{{ route('cibena-portal.monthly-invoice') }}">
                         @csrf
                         <button class="btn" type="submit">Monatsrechnung erstellen</button>
                     </form>
@@ -113,7 +111,7 @@
                                         <input type="checkbox" name="ticket_ids[]" value="{{ $ticket->id }}" form="ticket-selection-form">
                                     </td>
                                     <td>
-                                        <a href="{{ route('geiser-portal.tickets.show', $ticket) }}">{{ $ticket->ticket_number }}</a>
+                                        <a href="{{ route('cibena-portal.tickets.show', $ticket) }}">{{ $ticket->ticket_number }}</a>
                                         @if ($ticket->machine_returned)
                                             <span class="badge" style="background:#16a34a; color:#fff;">✓ Ausgegeben</span>
                                         @endif
@@ -132,5 +130,4 @@
             @endforeach
         </div>
     @endif
->>>>>>> old-ticket-system/main
 @endsection
