@@ -81,7 +81,7 @@ class GeiserCustomerPortalController extends Controller
             'email' => ['required', 'email', 'max:255'],
         ]);
 
-        $account = $this->findGeiserAccountByEmail($data['email']);
+        $account = $this->findPortalAccountByEmail($data['email']);
 
         if ($account) {
             $plainToken = Str::random(64);
@@ -106,7 +106,7 @@ class GeiserCustomerPortalController extends Controller
             }
         }
 
-        return back()->with('status', 'Falls fuer diese E-Mail ein Il Coccolino-Portalzugang existiert, wurde ein Magic Link versendet.');
+        return back()->with('status', 'Falls fuer diese E-Mail ein '.static::PORTAL_NAME.' existiert, wurde ein Magic Link versendet.');
     }
 
     public function loginWithPassword(Request $request): RedirectResponse
@@ -116,7 +116,7 @@ class GeiserCustomerPortalController extends Controller
             'password' => ['required', 'string', 'max:255'],
         ]);
 
-        $account = $this->findGeiserAccountByEmail($data['email']);
+        $account = $this->findPortalAccountByEmail($data['email']);
 
         $password = (string) ($account?->password ?? '');
         $passwordMatches = $account
@@ -146,7 +146,7 @@ class GeiserCustomerPortalController extends Controller
             'email' => ['required', 'email', 'max:255'],
         ]);
 
-        $account = $this->findGeiserAccountByEmail($data['email']);
+        $account = $this->findPortalAccountByEmail($data['email']);
 
         if ($account) {
             try {
@@ -171,12 +171,12 @@ class GeiserCustomerPortalController extends Controller
             }
         }
 
-        return back()->with('status', 'Falls fuer diese E-Mail ein Il Coccolino-Portalzugang existiert, wurde ein Link zur Passwortvergabe versendet.');
+        return back()->with('status', 'Falls fuer diese E-Mail ein '.static::PORTAL_NAME.' existiert, wurde ein Link zur Passwortvergabe versendet.');
     }
 
     public function showPasswordResetForm(string $token): View|RedirectResponse
     {
-        $magicLink = $this->usableGeiserMagicLink($token);
+        $magicLink = $this->usablePortalMagicLink($token);
         if (! $magicLink) {
             return redirect()->route($this->portalRouteName('login'))->with('warning', 'Der Link zur Passwortvergabe ist ungueltig oder abgelaufen. Bitte fordern Sie einen neuen Link an.');
         }
@@ -189,7 +189,7 @@ class GeiserCustomerPortalController extends Controller
 
     public function resetPassword(Request $request, string $token): RedirectResponse
     {
-        $magicLink = $this->usableGeiserMagicLink($token);
+        $magicLink = $this->usablePortalMagicLink($token);
         if (! $magicLink || ! $magicLink->account) {
             return redirect()->route($this->portalRouteName('login'))->with('warning', 'Der Link zur Passwortvergabe ist ungueltig oder abgelaufen. Bitte fordern Sie einen neuen Link an.');
         }
@@ -212,7 +212,7 @@ class GeiserCustomerPortalController extends Controller
 
     public function consumeMagicLink(Request $request, string $token): RedirectResponse
     {
-        $magicLink = $this->usableGeiserMagicLink($token);
+        $magicLink = $this->usablePortalMagicLink($token);
         if (! $magicLink || ! $magicLink->account) {
             return redirect()->route($this->portalRouteName('login'))->with('warning', 'Der Magic Link ist ungueltig oder abgelaufen. Bitte fordern Sie einen neuen Link an.');
         }
@@ -950,7 +950,7 @@ class GeiserCustomerPortalController extends Controller
             ->firstOrFail();
     }
 
-    private function findGeiserAccountByEmail(string $email): ?CustomerPortalAccount
+    protected function findPortalAccountByEmail(string $email): ?CustomerPortalAccount
     {
         return CustomerPortalAccount::query()
             ->whereRaw('LOWER(email) = ?', [mb_strtolower($email)])
@@ -960,7 +960,7 @@ class GeiserCustomerPortalController extends Controller
             ->first();
     }
 
-    private function usableGeiserMagicLink(string $token): ?CustomerPortalMagicLink
+    protected function usablePortalMagicLink(string $token): ?CustomerPortalMagicLink
     {
         $magicLink = CustomerPortalMagicLink::query()
             ->with('account')
