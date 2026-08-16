@@ -31,10 +31,11 @@
             <p class="muted">Service- und Reparaturauftraege nach Quellen und Kalenderwochen.</p>
         </div>
         <div class="button-row">
-            <form id="delivery-note-form" method="post" action="{{ route('tickets.delivery-note') }}">
+            <form id="ticket-selection-form" method="post">
                 @csrf
                 <button class="btn secondary" type="button" id="select-all-tickets">Alle markieren</button>
-                <button class="btn" type="submit">Lieferschein erstellen</button>
+                <button class="btn secondary" type="submit" formaction="{{ route('tickets.delivery-note') }}">Lieferschein erstellen</button>
+                <button class="btn" type="submit" formaction="{{ route('tickets.monthly-invoice') }}">Monatsrechnung erstellen</button>
             </form>
             <a class="btn" href="{{ route('tickets.create') }}">Neues Ticket</a>
         </div>
@@ -142,6 +143,51 @@
                 @endforeach
             </div>
         </section>
+    </div>
+
+    <div class="panel" style="margin-top: 2rem;">
+        <div class="page-header" style="margin-bottom: 1rem;">
+            <div>
+                <h2>Tickets nach Monat</h2>
+                <p class="muted">Monatliche Übersicht mit Auswahl für gemeinsame Rechnungen.</p>
+            </div>
+        </div>
+
+        @forelse ($monthGroups as $month)
+            <div style="margin-bottom: 1.5rem;">
+                <h3 style="margin: 0 0 .75rem;">{{ $month['label'] }}</h3>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                        <tr>
+                            <th style="width: 30px;"></th>
+                            <th>Ticket</th>
+                            <th>Kunde</th>
+                            <th>Maschine</th>
+                            <th>Seriennummer</th>
+                            <th>Datum</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        @foreach ($month['tickets'] as $ticket)
+                            <tr>
+                                <td>
+                                    <input type="checkbox" name="ticket_ids[]" value="{{ $ticket->id }}" class="delivery-note-checkbox" form="ticket-selection-form">
+                                </td>
+                                <td><a href="{{ route('tickets.show', $ticket) }}">{{ $ticket->dolibarr_order_ref ?: $ticket->ticket_number }}</a></td>
+                                <td>{{ $ticket->customer_name_snapshot }}</td>
+                                <td>{{ $ticket->customerMachine?->manufacturer_snapshot }} / {{ $ticket->customerMachine?->machine_ref_snapshot }}</td>
+                                <td>{{ $ticket->customerMachine?->serial_number ?: '-' }}</td>
+                                <td>{{ $ticket->acceptance_date?->format('d.m.Y') ?: $ticket->created_at?->format('d.m.Y') }}</td>
+                            </tr>
+                        @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        @empty
+            <p class="muted">Keine Tickets in dieser Ansicht.</p>
+        @endforelse
     </div>
 
     <div style="margin-top:1rem;">

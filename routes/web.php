@@ -5,6 +5,7 @@ use App\Http\Controllers\PortalAccountController;
 use App\Http\Controllers\CustomerPortalController;
 use App\Http\Controllers\EasyAppointmentsWebhookController;
 use App\Http\Controllers\GeiserCustomerPortalController;
+use App\Http\Controllers\CibenaCustomerPortalController;
 use App\Http\Controllers\SchoolPortalController;
 use App\Http\Controllers\CustomerPortalRequestController;
 use App\Http\Controllers\AdminAuthController;
@@ -62,6 +63,7 @@ Route::prefix('/kundenportal/geiser')->group(function (): void {
         Route::get('/ticket-history', [GeiserCustomerPortalController::class, 'lookupTicketHistory'])->name('geiser-portal.ticket-history.lookup');
         Route::get('/tickets/neu', [GeiserCustomerPortalController::class, 'createTicket'])->name('geiser-portal.tickets.create');
         Route::post('/tickets', [GeiserCustomerPortalController::class, 'storeTicket'])->name('geiser-portal.tickets.store');
+        Route::post('/monatliche-rechnung', [GeiserCustomerPortalController::class, 'generateMonthlyInvoice'])->name('geiser-portal.monthly-invoice');
         Route::get('/tickets/{ticket}/print', [GeiserCustomerPortalController::class, 'printTicket'])->name('geiser-portal.tickets.print');
         Route::get('/tickets/{ticket}/work-report', [GeiserCustomerPortalController::class, 'generateWorkReport'])->name('geiser-portal.tickets.work-report');
         Route::post('/tickets/{ticket}/work-report/send-mail', [GeiserCustomerPortalController::class, 'mailWorkReport'])->name('geiser-portal.tickets.work-report.mail');
@@ -71,6 +73,37 @@ Route::prefix('/kundenportal/geiser')->group(function (): void {
         Route::post('/tickets/{ticket}/messages', [TicketMessageController::class, 'storeGeiser'])->name('geiser-portal.tickets.messages.store');
         Route::get('/tickets/{ticket}/messages/{message}/attachments/{attachment}', [TicketMessageController::class, 'downloadGeiserAttachment'])->name('geiser-portal.tickets.messages.attachments.download');
         Route::post('/ocr-scan', [GeiserCustomerPortalController::class, 'scanTicketImage'])->name('geiser-portal.ocr.scan');
+    });
+});
+
+Route::prefix('/kundenportal/cibena')->group(function (): void {
+    Route::get('/', [CibenaCustomerPortalController::class, 'home'])->name('cibena-portal.home');
+    Route::get('/login', [CibenaCustomerPortalController::class, 'login'])->name('cibena-portal.login');
+    Route::post('/login', [CibenaCustomerPortalController::class, 'sendMagicLink'])->name('cibena-portal.magic.send');
+    Route::post('/login/password', [CibenaCustomerPortalController::class, 'loginWithPassword'])->name('cibena-portal.password.login');
+    Route::post('/login/password/reset', [CibenaCustomerPortalController::class, 'sendPasswordResetLink'])->name('cibena-portal.password.reset.send');
+    Route::get('/password/reset/{token}', [CibenaCustomerPortalController::class, 'showPasswordResetForm'])->name('cibena-portal.password.reset.form');
+    Route::post('/password/reset/{token}', [CibenaCustomerPortalController::class, 'resetPassword'])->name('cibena-portal.password.reset');
+    Route::get('/magic/{token}', [CibenaCustomerPortalController::class, 'consumeMagicLink'])->name('cibena-portal.magic');
+    Route::post('/logout', [CibenaCustomerPortalController::class, 'logout'])->name('cibena-portal.logout');
+
+    Route::middleware('customer.portal:cibena_customer_portal_account_id')->group(function (): void {
+        Route::get('/uebersicht', [CibenaCustomerPortalController::class, 'dashboard'])->name('cibena-portal.dashboard');
+        Route::get('/historie', [CibenaCustomerPortalController::class, 'history'])->name('cibena-portal.history');
+        Route::get('/maschinenprofil', [CibenaCustomerPortalController::class, 'findMachineProfile'])->name('cibena-portal.machine-profiles.lookup');
+        Route::get('/ticket-history', [CibenaCustomerPortalController::class, 'lookupTicketHistory'])->name('cibena-portal.ticket-history.lookup');
+        Route::get('/tickets/neu', [CibenaCustomerPortalController::class, 'createTicket'])->name('cibena-portal.tickets.create');
+        Route::post('/tickets', [CibenaCustomerPortalController::class, 'storeTicket'])->name('cibena-portal.tickets.store');
+        Route::post('/monatliche-rechnung', [CibenaCustomerPortalController::class, 'generateMonthlyInvoice'])->name('cibena-portal.monthly-invoice');
+        Route::get('/tickets/{ticket}/print', [CibenaCustomerPortalController::class, 'printTicket'])->name('cibena-portal.tickets.print');
+        Route::get('/tickets/{ticket}/work-report', [CibenaCustomerPortalController::class, 'generateWorkReport'])->name('cibena-portal.tickets.work-report');
+        Route::post('/tickets/{ticket}/work-report/send-mail', [CibenaCustomerPortalController::class, 'mailWorkReport'])->name('cibena-portal.tickets.work-report.mail');
+        Route::get('/tickets/{ticket}', [CibenaCustomerPortalController::class, 'showTicket'])->name('cibena-portal.tickets.show');
+        Route::put('/tickets/{ticket}', [CibenaCustomerPortalController::class, 'updateTicket'])->name('cibena-portal.tickets.update');
+        Route::put('/tickets/{ticket}/machine-returned', [CibenaCustomerPortalController::class, 'updateMachineReturned'])->name('cibena-portal.tickets.machine-returned');
+        Route::post('/tickets/{ticket}/messages', [TicketMessageController::class, 'storeGeiser'])->name('cibena-portal.tickets.messages.store');
+        Route::get('/tickets/{ticket}/messages/{message}/attachments/{attachment}', [TicketMessageController::class, 'downloadGeiserAttachment'])->name('cibena-portal.tickets.messages.attachments.download');
+        Route::post('/ocr-scan', [CibenaCustomerPortalController::class, 'scanTicketImage'])->name('cibena-portal.ocr.scan');
     });
 });
 
@@ -105,6 +138,7 @@ Route::middleware('admin.auth')->group(function (): void {
     Route::get('/tickets/create', [TicketController::class, 'create'])->name('tickets.create');
     Route::post('/tickets', [TicketController::class, 'store'])->name('tickets.store');
     Route::post('/tickets/delivery-note', [TicketController::class, 'generateDeliveryNote'])->name('tickets.delivery-note');
+    Route::post('/tickets/monthly-invoice', [TicketController::class, 'generateMonthlyInvoice'])->name('tickets.monthly-invoice');
     Route::get('/tickets/{ticket}/geiser-invoice', [TicketController::class, 'generateGeiserInvoice'])->name('tickets.geiser-invoice');
     Route::get('/tickets/{ticket}', [TicketController::class, 'show'])->name('tickets.show');
     Route::put('/tickets/{ticket}', [TicketController::class, 'update'])->name('tickets.update');

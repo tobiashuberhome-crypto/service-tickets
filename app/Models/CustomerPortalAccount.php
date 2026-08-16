@@ -12,6 +12,7 @@ class CustomerPortalAccount extends Model
 
     public const PORTAL_SCOPE_DEFAULT = 'default';
     public const PORTAL_SCOPE_GEISER = 'geiser';
+    public const PORTAL_SCOPE_CIBENA = 'cibena';
     public const PORTAL_SCOPE_SCHOOL = 'school';
 
     protected $fillable = [
@@ -50,5 +51,10 @@ class CustomerPortalAccount extends Model
     public function isGeiserPortal(): bool
     {
         return $this->portal_scope === self::PORTAL_SCOPE_GEISER;
+    }
+
+    public function isCibenaPortal(): bool
+    {
+        return $this->portal_scope === self::PORTAL_SCOPE_CIBENA;
     }
 }

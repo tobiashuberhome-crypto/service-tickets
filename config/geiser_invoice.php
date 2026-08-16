@@ -28,6 +28,7 @@ return [
     ],
 
     'work_report_mail' => [
+        'from_address' => env('GEISER_WORK_REPORT_MAIL_FROM_ADDRESS', 'info@il-coccolino.de'),
         'from_name' => env('GEISER_WORK_REPORT_MAIL_FROM_NAME', 'Il Coccolino'),
     ],
 ];

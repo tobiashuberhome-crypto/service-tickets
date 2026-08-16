@@ -1,4 +1,4 @@
-@extends('layouts.customer-portal-geiser')
+@extends('layouts.customer-portal-cibena')
 
 @section('content')
     <div class="page-header">
@@ -7,15 +7,15 @@
             <p class="muted">Status: <strong>{{ $customerStatusLabel }}</strong></p>
         </div>
         <div class="button-row">
-            <a class="btn secondary" href="{{ route('geiser-portal.tickets.print', $ticket) }}" target="_blank" rel="noopener">Ticket drucken</a>
-            <a class="btn secondary" href="{{ route('geiser-portal.tickets.work-report', $ticket) }}" target="_blank" rel="noopener">Arbeitsbericht PDF</a>
+            <a class="btn secondary" href="{{ route('cibena-portal.tickets.print', $ticket) }}" target="_blank" rel="noopener">Ticket drucken</a>
+            <a class="btn secondary" href="{{ route('cibena-portal.tickets.work-report', $ticket) }}" target="_blank" rel="noopener">Arbeitsbericht PDF</a>
             @if (($customerEmail ?? '') !== '')
-                <form method="post" action="{{ route('geiser-portal.tickets.work-report.mail', $ticket) }}" style="display:inline;">
+                <form method="post" action="{{ route('cibena-portal.tickets.work-report.mail', $ticket) }}" style="display:inline;">
                     @csrf
                     <button class="btn secondary" type="submit">Arbeitsbericht per E-Mail</button>
                 </form>
             @endif
-            <a class="btn secondary" href="{{ route('geiser-portal.dashboard') }}">Zurueck zur Übersicht</a>
+            <a class="btn secondary" href="{{ route('cibena-portal.dashboard') }}">Zurueck zur Übersicht</a>
         </div>
     </div>
 
@@ -45,7 +45,7 @@
 
     @if (!$ticket->created_via_customer_portal)
         <div class="alert alert-info">
-            Dieses Ticket wurde intern angelegt und kann hier im Il Coccolino-Portal weiter bearbeitet werden.
+            Dieses Ticket wurde intern angelegt und kann hier im Cibena-Portal weiter bearbeitet werden.
         </div>
     @endif
 
@@ -151,7 +151,7 @@
         <h3>Fehlerbeschreibung</h3>
 
         @if ($isEditable)
-            <form id="ticket-edit-form" method="post" action="{{ route('geiser-portal.tickets.update', $ticket) }}" class="stack" enctype="multipart/form-data">
+            <form id="ticket-edit-form" method="post" action="{{ route('cibena-portal.tickets.update', $ticket) }}" class="stack" enctype="multipart/form-data">
                 @csrf
                 @method('PUT')
                 
@@ -226,7 +226,7 @@
                 <p>{{ nl2br(e($ticket->error_description)) }}</p>
             </div>
 
-            <form method="post" action="{{ route('geiser-portal.tickets.machine-returned', $ticket) }}" style="margin-top: 1rem;">
+            <form method="post" action="{{ route('cibena-portal.tickets.machine-returned', $ticket) }}" style="margin-top: 1rem;">
                 @csrf
                 @method('PUT')
                 <label class="check-row">
@@ -448,7 +448,7 @@
                 @foreach ($ticket->messages as $ticketMessage)
                     <article class="message-item {{ $ticketMessage->sender_type === \App\Models\TicketMessage::SENDER_CUSTOMER ? 'is-customer' : 'is-admin' }}">
                         <header class="message-meta">
-                            <strong>{{ $ticketMessage->sender_label ?: ($ticketMessage->sender_type === \App\Models\TicketMessage::SENDER_CUSTOMER ? 'Il Coccolino' : 'Service') }}</strong>
+                            <strong>{{ $ticketMessage->sender_label ?: ($ticketMessage->sender_type === \App\Models\TicketMessage::SENDER_CUSTOMER ? 'Cibena' : 'Service') }}</strong>
                             <span class="muted">{{ $ticketMessage->created_at?->format('d.m.Y H:i') }}</span>
                         </header>
                         @if (filled($ticketMessage->body))
@@ -457,7 +457,7 @@
                         @if ($ticketMessage->attachments->isNotEmpty())
                             <div class="message-attachments">
                                 @foreach ($ticketMessage->attachments as $attachment)
-                                    <a href="{{ route('geiser-portal.tickets.messages.attachments.download', [$ticket, $ticketMessage, $attachment]) }}" class="btn secondary">
+                                    <a href="{{ route('cibena-portal.tickets.messages.attachments.download', [$ticket, $ticketMessage, $attachment]) }}" class="btn secondary">
                                         Anhang: {{ $attachment->original_name }}
                                     </a>
                                 @endforeach
@@ -468,7 +468,7 @@
             </div>
         @endif
 
-        <form method="post" action="{{ route('geiser-portal.tickets.messages.store', $ticket) }}" class="stack" enctype="multipart/form-data">
+        <form method="post" action="{{ route('cibena-portal.tickets.messages.store', $ticket) }}" class="stack" enctype="multipart/form-data">
             @csrf
             <div>
                 <label for="reply-body">Antwort</label>

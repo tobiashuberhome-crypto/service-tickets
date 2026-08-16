@@ -96,12 +96,30 @@ class TicketController extends Controller
             ];
         });
 
+        $monthGroups = $tickets
+            ->groupBy(function (Ticket $ticket): string {
+                $date = $ticket->acceptance_date ?? $ticket->created_at;
+
+                return $date ? $date->copy()->startOfMonth()->toDateString() : Carbon::now()->startOfMonth()->toDateString();
+            })
+            ->map(function ($monthTickets, string $monthKey): array {
+                $monthStart = Carbon::parse($monthKey)->startOfMonth();
+
+                return [
+                    'key' => $monthKey,
+                    'label' => $monthStart->locale('de')->translatedFormat('F Y'),
+                    'tickets' => $monthTickets->sortBy(fn (Ticket $ticket) => $ticket->acceptance_date ?? $ticket->created_at),
+                ];
+            })
+            ->sortKeysDesc();
+
         return view('tickets.index', [
             'weekGroups' => $weekGroups,
             'upcomingWeeks' => $upcomingWeeks,
             'withoutTargetDate' => $withoutTargetDate,
             'schoolPortalIncoming' => $schoolPortalIncoming,
             'easyAppointmentsIncoming' => $easyAppointmentsIncoming,
+            'monthGroups' => $monthGroups,
             'statuses' => Ticket::statusOptions(),
             'activeStatus' => $status,
             'search' => $search,
@@ -471,6 +489,53 @@ class TicketController extends Controller
         }
 
         $pdf = Pdf::loadView('tickets.delivery-note', $payload)->setPaper('a4', 'portrait');
+
+        return $pdf->download($fileName);
+    }
+
+    public function generateMonthlyInvoice(Request $request, GeiserInvoiceCalculator $invoiceCalculator)
+    {
+        $data = $request->validate([
+            'ticket_ids' => ['required', 'array', 'min:1'],
+            'ticket_ids.*' => ['integer', 'exists:tickets,id'],
+        ]);
+
+        $tickets = Ticket::query()
+            ->with(['customerMachine', 'customerMachineProfile', 'parts', 'serviceLines'])
+            ->whereIn('id', $data['ticket_ids'])
+            ->orderBy('acceptance_date')
+            ->orderBy('ticket_number')
+            ->get();
+
+        if ($tickets->isEmpty()) {
+            return back()->with('warning', 'Es wurden keine Tickets für die Monatsrechnung ausgewählt.');
+        }
+
+        $invoiceSummaryByTicket = $tickets
+            ->mapWithKeys(fn (Ticket $ticket): array => [(string) $ticket->id => $invoiceCalculator->summarize($ticket)])
+            ->all();
+        $monthlyTotalGross = round(
+            (float) collect($invoiceSummaryByTicket)->sum(fn (array $summary): float => (float) ($summary['totalGross'] ?? 0)),
+            2
+        );
+
+        $monthDate = $tickets->first()->acceptance_date ?? $tickets->first()->created_at ?? now();
+        $monthLabel = $monthDate->copy()->locale('de')->translatedFormat('F Y');
+        $fileName = 'monatsrechnung-'.$monthDate->copy()->format('Y-m').'.pdf';
+
+        $payload = [
+            'tickets' => $tickets,
+            'createdAt' => now(),
+            'invoiceSummaryByTicket' => $invoiceSummaryByTicket,
+            'monthLabel' => $monthLabel,
+            'monthlyTotalGross' => $monthlyTotalGross,
+        ];
+
+        if (! class_exists(Pdf::class)) {
+            return response()->view('tickets.monthly-invoice', $payload);
+        }
+
+        $pdf = Pdf::loadView('tickets.monthly-invoice', $payload)->setPaper('a4', 'portrait');
 
         return $pdf->download($fileName);
     }
