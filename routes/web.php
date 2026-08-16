@@ -5,10 +5,7 @@ use App\Http\Controllers\PortalAccountController;
 use App\Http\Controllers\CustomerPortalController;
 use App\Http\Controllers\EasyAppointmentsWebhookController;
 use App\Http\Controllers\GeiserCustomerPortalController;
-<<<<<<< HEAD
-=======
 use App\Http\Controllers\CibenaCustomerPortalController;
->>>>>>> old-ticket-system/main
 use App\Http\Controllers\SchoolPortalController;
 use App\Http\Controllers\CustomerPortalRequestController;
 use App\Http\Controllers\AdminAuthController;
@@ -66,10 +63,7 @@ Route::prefix('/kundenportal/geiser')->group(function (): void {
         Route::get('/ticket-history', [GeiserCustomerPortalController::class, 'lookupTicketHistory'])->name('geiser-portal.ticket-history.lookup');
         Route::get('/tickets/neu', [GeiserCustomerPortalController::class, 'createTicket'])->name('geiser-portal.tickets.create');
         Route::post('/tickets', [GeiserCustomerPortalController::class, 'storeTicket'])->name('geiser-portal.tickets.store');
-<<<<<<< HEAD
-=======
         Route::post('/monatliche-rechnung', [GeiserCustomerPortalController::class, 'generateMonthlyInvoice'])->name('geiser-portal.monthly-invoice');
->>>>>>> old-ticket-system/main
         Route::get('/tickets/{ticket}/print', [GeiserCustomerPortalController::class, 'printTicket'])->name('geiser-portal.tickets.print');
         Route::get('/tickets/{ticket}/work-report', [GeiserCustomerPortalController::class, 'generateWorkReport'])->name('geiser-portal.tickets.work-report');
         Route::post('/tickets/{ticket}/work-report/send-mail', [GeiserCustomerPortalController::class, 'mailWorkReport'])->name('geiser-portal.tickets.work-report.mail');
@@ -82,8 +76,6 @@ Route::prefix('/kundenportal/geiser')->group(function (): void {
     });
 });
 
-<<<<<<< HEAD
-=======
 Route::prefix('/kundenportal/cibena')->group(function (): void {
     Route::get('/', [CibenaCustomerPortalController::class, 'home'])->name('cibena-portal.home');
     Route::get('/login', [CibenaCustomerPortalController::class, 'login'])->name('cibena-portal.login');
@@ -115,7 +107,6 @@ Route::prefix('/kundenportal/cibena')->group(function (): void {
     });
 });
 
->>>>>>> old-ticket-system/main
 // ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Schul-Portal ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬
 Route::prefix('/schulportal')->group(function (): void {
     Route::get('/', [SchoolPortalController::class, 'home'])->name('school-portal.home');
@@ -147,10 +138,7 @@ Route::middleware('admin.auth')->group(function (): void {
     Route::get('/tickets/create', [TicketController::class, 'create'])->name('tickets.create');
     Route::post('/tickets', [TicketController::class, 'store'])->name('tickets.store');
     Route::post('/tickets/delivery-note', [TicketController::class, 'generateDeliveryNote'])->name('tickets.delivery-note');
-<<<<<<< HEAD
-=======
     Route::post('/tickets/monthly-invoice', [TicketController::class, 'generateMonthlyInvoice'])->name('tickets.monthly-invoice');
->>>>>>> old-ticket-system/main
     Route::get('/tickets/{ticket}/geiser-invoice', [TicketController::class, 'generateGeiserInvoice'])->name('tickets.geiser-invoice');
     Route::get('/tickets/{ticket}', [TicketController::class, 'show'])->name('tickets.show');
     Route::put('/tickets/{ticket}', [TicketController::class, 'update'])->name('tickets.update');

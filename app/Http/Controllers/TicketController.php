@@ -96,8 +96,6 @@ class TicketController extends Controller
             ];
         });
 
-<<<<<<< HEAD
-=======
         $monthGroups = $tickets
             ->groupBy(function (Ticket $ticket): string {
                 $date = $ticket->acceptance_date ?? $ticket->created_at;
@@ -115,17 +113,13 @@ class TicketController extends Controller
             })
             ->sortKeysDesc();
 
->>>>>>> old-ticket-system/main
         return view('tickets.index', [
             'weekGroups' => $weekGroups,
             'upcomingWeeks' => $upcomingWeeks,
             'withoutTargetDate' => $withoutTargetDate,
             'schoolPortalIncoming' => $schoolPortalIncoming,
             'easyAppointmentsIncoming' => $easyAppointmentsIncoming,
-<<<<<<< HEAD
-=======
             'monthGroups' => $monthGroups,
->>>>>>> old-ticket-system/main
             'statuses' => Ticket::statusOptions(),
             'activeStatus' => $status,
             'search' => $search,
@@ -499,8 +493,6 @@ class TicketController extends Controller
         return $pdf->download($fileName);
     }
 
-<<<<<<< HEAD
-=======
     public function generateMonthlyInvoice(Request $request, GeiserInvoiceCalculator $invoiceCalculator)
     {
         $data = $request->validate([
@@ -548,7 +540,6 @@ class TicketController extends Controller
         return $pdf->download($fileName);
     }
 
->>>>>>> old-ticket-system/main
     public function generateGeiserInvoice(Request $request, Ticket $ticket, DolibarrClient $dolibarr, GeiserInvoiceCalculator $invoiceCalculator)
     {
         $ticket->load(['customerMachine', 'customerMachineProfile', 'parts', 'serviceLines']);

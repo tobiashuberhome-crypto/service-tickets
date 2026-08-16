@@ -12,10 +12,7 @@ class CustomerPortalAccount extends Model
 
     public const PORTAL_SCOPE_DEFAULT = 'default';
     public const PORTAL_SCOPE_GEISER = 'geiser';
-<<<<<<< HEAD
-=======
     public const PORTAL_SCOPE_CIBENA = 'cibena';
->>>>>>> old-ticket-system/main
     public const PORTAL_SCOPE_SCHOOL = 'school';
 
     protected $fillable = [
@@ -55,12 +52,9 @@ class CustomerPortalAccount extends Model
     {
         return $this->portal_scope === self::PORTAL_SCOPE_GEISER;
     }
-<<<<<<< HEAD
-=======
 
     public function isCibenaPortal(): bool
     {
         return $this->portal_scope === self::PORTAL_SCOPE_CIBENA;
     }
->>>>>>> old-ticket-system/main
 }

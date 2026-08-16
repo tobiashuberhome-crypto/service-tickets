@@ -28,17 +28,12 @@ use Throwable;
 
 class GeiserCustomerPortalController extends Controller
 {
-<<<<<<< HEAD
-    private const CUSTOMER_ID = 9;
-    private const SESSION_KEY = 'geiser_customer_portal_account_id';
-=======
     protected const CUSTOMER_ID = 9;
     protected const SESSION_KEY = 'geiser_customer_portal_account_id';
     protected const PORTAL_SCOPE = CustomerPortalAccount::PORTAL_SCOPE_GEISER;
     protected const PORTAL_ROUTE_PREFIX = 'geiser-portal';
     protected const VIEW_PREFIX = 'customer-portal-geiser';
     protected const PORTAL_NAME = 'Il Coccolino-Serviceportal';
->>>>>>> old-ticket-system/main
     private const ESTIMATE_DEFINITIONS = [
         'estimate_qty_tech' => ['label' => 'Arbeitseinheit Technik', 'hint' => '10 Minuten pro Einheit', 'unit_price' => 16.90],
         'estimate_qty_service_fee' => ['label' => 'Servicegebuehr', 'hint' => 'Abwicklung Auftrag sowie Transport in die Werkstatt und zurueck', 'unit_price' => 29.00],
@@ -53,11 +48,6 @@ class GeiserCustomerPortalController extends Controller
 		'repair_approval_limit' => 200,00,
     ];
 
-<<<<<<< HEAD
-    public function home(Request $request): View
-    {
-        return view('customer-portal-geiser.home', [
-=======
     protected function portalRouteName(string $name): string
     {
         return static::PORTAL_ROUTE_PREFIX.'.'.$name;
@@ -76,18 +66,13 @@ class GeiserCustomerPortalController extends Controller
     public function home(Request $request): View
     {
         return view($this->portalView('home'), [
->>>>>>> old-ticket-system/main
             'account' => $this->optionalAccount($request),
         ]);
     }
 
     public function login(): View
     {
-<<<<<<< HEAD
-        return view('customer-portal-geiser.login');
-=======
         return view($this->portalView('login'));
->>>>>>> old-ticket-system/main
     }
 
     public function sendMagicLink(Request $request): RedirectResponse
@@ -106,11 +91,7 @@ class GeiserCustomerPortalController extends Controller
                 'expires_at' => now()->addMinutes(30),
             ]);
 
-<<<<<<< HEAD
-            $url = route('geiser-portal.magic', ['token' => $plainToken]);
-=======
             $url = $this->portalRoute('magic', ['token' => $plainToken]);
->>>>>>> old-ticket-system/main
 
             try {
                 Mail::raw("Guten Tag,\n\nueber den folgenden Link koennen Sie sich im Il Coccolino-Serviceportal anmelden. Der Link ist 30 Minuten gueltig und kann nur einmal verwendet werden:\n\n{$url}\n\nFalls Sie diesen Link nicht angefordert haben, koennen Sie diese E-Mail ignorieren.\n", function ($message) use ($account): void {
@@ -154,15 +135,9 @@ class GeiserCustomerPortalController extends Controller
         $account->forceFill(['last_login_at' => now()])->save();
 
         $request->session()->regenerate();
-<<<<<<< HEAD
-        $request->session()->put(self::SESSION_KEY, $account->id);
-
-        return redirect()->route('geiser-portal.dashboard')->with('status', 'Sie sind im Il Coccolino-Serviceportal angemeldet.');
-=======
         $request->session()->put(static::SESSION_KEY, $account->id);
 
         return redirect()->route($this->portalRouteName('dashboard'))->with('status', 'Sie sind im '.static::PORTAL_NAME.' angemeldet.');
->>>>>>> old-ticket-system/main
     }
 
     public function sendPasswordResetLink(Request $request): RedirectResponse
@@ -182,11 +157,7 @@ class GeiserCustomerPortalController extends Controller
                     'expires_at' => now()->addHours(12),
                 ]);
 
-<<<<<<< HEAD
-                $url = route('geiser-portal.password.reset.form', ['token' => $plainToken]);
-=======
                 $url = $this->portalRoute('password.reset.form', ['token' => $plainToken]);
->>>>>>> old-ticket-system/main
 
                 Mail::raw("Guten Tag,\n\nueber den folgenden Link koennen Sie ein neues Passwort fuer das Il Coccolino-Serviceportal vergeben. Der Link ist 12 Stunden gueltig und kann nur einmal verwendet werden:\n\n{$url}\n\nFalls Sie diese Anfrage nicht gestellt haben, koennen Sie diese E-Mail ignorieren.\n", function ($message) use ($account): void {
                     $message->to($account->email)->subject('Neues Passwort fuer Il Coccolino-Serviceportal');
@@ -207,17 +178,10 @@ class GeiserCustomerPortalController extends Controller
     {
         $magicLink = $this->usableGeiserMagicLink($token);
         if (! $magicLink) {
-<<<<<<< HEAD
-            return redirect()->route('geiser-portal.login')->with('warning', 'Der Link zur Passwortvergabe ist ungueltig oder abgelaufen. Bitte fordern Sie einen neuen Link an.');
-        }
-
-        return view('customer-portal-geiser.password-reset', [
-=======
             return redirect()->route($this->portalRouteName('login'))->with('warning', 'Der Link zur Passwortvergabe ist ungueltig oder abgelaufen. Bitte fordern Sie einen neuen Link an.');
         }
 
         return view($this->portalView('password-reset'), [
->>>>>>> old-ticket-system/main
             'token' => $token,
             'email' => $magicLink->account?->email,
         ]);
@@ -227,11 +191,7 @@ class GeiserCustomerPortalController extends Controller
     {
         $magicLink = $this->usableGeiserMagicLink($token);
         if (! $magicLink || ! $magicLink->account) {
-<<<<<<< HEAD
-            return redirect()->route('geiser-portal.login')->with('warning', 'Der Link zur Passwortvergabe ist ungueltig oder abgelaufen. Bitte fordern Sie einen neuen Link an.');
-=======
             return redirect()->route($this->portalRouteName('login'))->with('warning', 'Der Link zur Passwortvergabe ist ungueltig oder abgelaufen. Bitte fordern Sie einen neuen Link an.');
->>>>>>> old-ticket-system/main
         }
 
         $data = $request->validate([
@@ -245,41 +205,25 @@ class GeiserCustomerPortalController extends Controller
         $magicLink->forceFill(['used_at' => now()])->save();
 
         $request->session()->regenerate();
-<<<<<<< HEAD
-        $request->session()->put(self::SESSION_KEY, $magicLink->account->id);
-
-        return redirect()->route('geiser-portal.dashboard')->with('status', 'Ihr Passwort wurde erfolgreich gesetzt und Sie sind nun angemeldet.');
-=======
         $request->session()->put(static::SESSION_KEY, $magicLink->account->id);
 
         return redirect()->route($this->portalRouteName('dashboard'))->with('status', 'Ihr Passwort wurde erfolgreich gesetzt und Sie sind nun angemeldet.');
->>>>>>> old-ticket-system/main
     }
 
     public function consumeMagicLink(Request $request, string $token): RedirectResponse
     {
         $magicLink = $this->usableGeiserMagicLink($token);
         if (! $magicLink || ! $magicLink->account) {
-<<<<<<< HEAD
-            return redirect()->route('geiser-portal.login')->with('warning', 'Der Magic Link ist ungueltig oder abgelaufen. Bitte fordern Sie einen neuen Link an.');
-=======
             return redirect()->route($this->portalRouteName('login'))->with('warning', 'Der Magic Link ist ungueltig oder abgelaufen. Bitte fordern Sie einen neuen Link an.');
->>>>>>> old-ticket-system/main
         }
 
         $magicLink->forceFill(['used_at' => now()])->save();
         $magicLink->account->forceFill(['last_login_at' => now()])->save();
 
         $request->session()->regenerate();
-<<<<<<< HEAD
-        $request->session()->put(self::SESSION_KEY, $magicLink->account->id);
-
-        return redirect()->route('geiser-portal.dashboard')->with('status', 'Sie sind im Il Coccolino-Serviceportal angemeldet.');
-=======
         $request->session()->put(static::SESSION_KEY, $magicLink->account->id);
 
         return redirect()->route($this->portalRouteName('dashboard'))->with('status', 'Sie sind im '.static::PORTAL_NAME.' angemeldet.');
->>>>>>> old-ticket-system/main
     }
 
     public function dashboard(Request $request): View
@@ -293,12 +237,6 @@ class GeiserCustomerPortalController extends Controller
             ->latest()
             ->get();
 
-<<<<<<< HEAD
-        return view('customer-portal-geiser.dashboard', [
-            'account' => $account,
-            'tickets' => $tickets,
-            'hideReturned' => $hideReturned,
-=======
         $monthGroups = $tickets
             ->groupBy(function (Ticket $ticket): string {
                 $date = $ticket->acceptance_date ?? $ticket->created_at;
@@ -321,16 +259,10 @@ class GeiserCustomerPortalController extends Controller
             'tickets' => $tickets,
             'hideReturned' => $hideReturned,
             'monthGroups' => $monthGroups,
->>>>>>> old-ticket-system/main
             'customerStatusLabels' => $tickets->mapWithKeys(fn (Ticket $t) => [$t->id => $this->customerVisibleStatus($t)]),
         ]);
     }
 
-<<<<<<< HEAD
-    public function createTicket(Request $request): View
-    {
-        return view('customer-portal-geiser.tickets.create', [
-=======
     public function generateMonthlyInvoice(Request $request, GeiserInvoiceCalculator $invoiceCalculator)
     {
         $account = $this->account($request);
@@ -384,18 +316,13 @@ class GeiserCustomerPortalController extends Controller
     public function createTicket(Request $request): View
     {
         return view($this->portalView('tickets.create'), [
->>>>>>> old-ticket-system/main
             'account' => $this->account($request),
         ]);
     }
 
     public function history(Request $request): View
     {
-<<<<<<< HEAD
-        return view('customer-portal-geiser.history', [
-=======
         return view($this->portalView('history'), [
->>>>>>> old-ticket-system/main
             'account' => $this->account($request),
             'initialSerialNumber' => trim((string) $request->query('serial_number')),
         ]);
@@ -582,17 +509,6 @@ class GeiserCustomerPortalController extends Controller
             $ticket->markSyncError($exception->getMessage());
 
             return redirect()
-<<<<<<< HEAD
-                ->route('geiser-portal.tickets.show', $ticket)
-                ->with('warning', 'Ihr Ticket wurde gespeichert. Die interne Dolibarr-Synchronisierung muss noch geprueft werden.')
-                ->with('auto_open_print_url', route('geiser-portal.tickets.print', $ticket));
-        }
-
-        return redirect()
-            ->route('geiser-portal.tickets.show', $ticket)
-            ->with('status', 'Ihr Ticket wurde erstellt.')
-            ->with('auto_open_print_url', route('geiser-portal.tickets.print', $ticket));
-=======
                 ->route($this->portalRouteName('tickets.show'), $ticket)
                 ->with('warning', 'Ihr Ticket wurde gespeichert. Die interne Dolibarr-Synchronisierung muss noch geprueft werden.')
                 ->with('auto_open_print_url', $this->portalRoute('tickets.print', $ticket));
@@ -602,22 +518,14 @@ class GeiserCustomerPortalController extends Controller
             ->route($this->portalRouteName('tickets.show'), $ticket)
             ->with('status', 'Ihr Ticket wurde erstellt.')
             ->with('auto_open_print_url', $this->portalRoute('tickets.print', $ticket));
->>>>>>> old-ticket-system/main
     }
 
     public function logout(Request $request): RedirectResponse
     {
-<<<<<<< HEAD
-        $request->session()->forget(self::SESSION_KEY);
-        $request->session()->regenerateToken();
-
-        return redirect()->route('geiser-portal.home')->with('status', 'Sie wurden abgemeldet.');
-=======
         $request->session()->forget(static::SESSION_KEY);
         $request->session()->regenerateToken();
 
         return redirect()->route($this->portalRouteName('home'))->with('status', 'Sie wurden abgemeldet.');
->>>>>>> old-ticket-system/main
     }
 
     public function showTicket(Request $request, Ticket $ticket): View
@@ -636,11 +544,7 @@ class GeiserCustomerPortalController extends Controller
             $estimateTotal = array_reduce($estimateLines, fn (float $sum, array $line) => $sum + (float) ($line['line_total'] ?? 0), 0.0);
         }
 
-<<<<<<< HEAD
-        return view('customer-portal-geiser.tickets.show', [
-=======
         return view($this->portalView('tickets.show'), [
->>>>>>> old-ticket-system/main
             'account' => $account,
             'ticket' => $ticket,
             'isEditable' => $this->canEditTicket($account, $ticket),
@@ -670,11 +574,7 @@ class GeiserCustomerPortalController extends Controller
             'machine_returned' => $request->boolean('machine_returned'),
         ])->save();
 
-<<<<<<< HEAD
-        return redirect()->route('geiser-portal.tickets.show', $ticket)
-=======
         return redirect()->route($this->portalRouteName('tickets.show'), $ticket)
->>>>>>> old-ticket-system/main
             ->with('status', 'Der Ausgabestatus der Maschine wurde aktualisiert.');
     }
 
@@ -706,17 +606,10 @@ class GeiserCustomerPortalController extends Controller
         $fileName = 'geiser-ticket-'.$ticket->ticket_number.'.pdf';
 
         if (! class_exists(Pdf::class)) {
-<<<<<<< HEAD
-            return response()->view('customer-portal-geiser.tickets.print', $payload);
-        }
-
-        $pdf = Pdf::loadView('customer-portal-geiser.tickets.print', $payload)->setPaper('a4', 'portrait');
-=======
             return response()->view($this->portalView('tickets.print'), $payload);
         }
 
         $pdf = Pdf::loadView($this->portalView('tickets.print'), $payload)->setPaper('a4', 'portrait');
->>>>>>> old-ticket-system/main
 
         return $pdf->stream($fileName);
     }
@@ -737,17 +630,10 @@ class GeiserCustomerPortalController extends Controller
         $fileName = 'arbeitsbericht-'.$ticket->ticket_number.'.pdf';
 
         if (! class_exists(Pdf::class)) {
-<<<<<<< HEAD
-            return response()->view('customer-portal-geiser.tickets.work-report', $payload);
-        }
-
-        $pdf = Pdf::loadView('customer-portal-geiser.tickets.work-report', $payload)->setPaper('a4', 'portrait');
-=======
             return response()->view($this->portalView('tickets.work-report'), $payload);
         }
 
         $pdf = Pdf::loadView($this->portalView('tickets.work-report'), $payload)->setPaper('a4', 'portrait');
->>>>>>> old-ticket-system/main
 
         return $pdf->stream($fileName);
     }
@@ -770,40 +656,24 @@ class GeiserCustomerPortalController extends Controller
             ?: ''));
 
         if ($recipientEmail === '') {
-<<<<<<< HEAD
-            return redirect()->route('geiser-portal.tickets.show', $ticket)
-=======
             return redirect()->route($this->portalRouteName('tickets.show'), $ticket)
->>>>>>> old-ticket-system/main
                 ->with('warning', 'Es ist keine E-Mail-Adresse hinterlegt. Der Arbeitsbericht konnte nicht versendet werden.');
         }
 
         if (! class_exists(Pdf::class)) {
-<<<<<<< HEAD
-            return redirect()->route('geiser-portal.tickets.show', $ticket)
-=======
             return redirect()->route($this->portalRouteName('tickets.show'), $ticket)
->>>>>>> old-ticket-system/main
                 ->with('warning', 'PDF-Generierung ist nicht verfuegbar.');
         }
 
         $payload = $this->buildWorkReportPayload($ticket, $invoiceLines);
         $fileName = 'arbeitsbericht-'.$ticket->ticket_number.'.pdf';
-<<<<<<< HEAD
-        $pdfBinary = Pdf::loadView('customer-portal-geiser.tickets.work-report', $payload)
-=======
         $pdfBinary = Pdf::loadView($this->portalView('tickets.work-report'), $payload)
->>>>>>> old-ticket-system/main
             ->setPaper('a4', 'portrait')
             ->output();
 
         $this->sendWorkReportByMail($ticket, $recipientEmail, $fileName, $pdfBinary);
 
-<<<<<<< HEAD
-        return redirect()->route('geiser-portal.tickets.show', $ticket)
-=======
         return redirect()->route($this->portalRouteName('tickets.show'), $ticket)
->>>>>>> old-ticket-system/main
             ->with('status', 'Der Arbeitsbericht wurde per E-Mail an '.$recipientEmail.' gesendet.');
     }
 
@@ -948,11 +818,7 @@ class GeiserCustomerPortalController extends Controller
         }
         $ticket->update($updateData);
 
-<<<<<<< HEAD
-        return redirect()->route('geiser-portal.tickets.show', $ticket)
-=======
         return redirect()->route($this->portalRouteName('tickets.show'), $ticket)
->>>>>>> old-ticket-system/main
             ->with('status', 'Ihr Ticket wurde aktualisiert.');
     }
 
@@ -1060,11 +926,7 @@ class GeiserCustomerPortalController extends Controller
     }
     private function optionalAccount(Request $request): ?CustomerPortalAccount
     {
-<<<<<<< HEAD
-        $accountId = (int) $request->session()->get(self::SESSION_KEY);
-=======
         $accountId = (int) $request->session()->get(static::SESSION_KEY);
->>>>>>> old-ticket-system/main
 
         if ($accountId <= 0) {
             return null;
@@ -1072,13 +934,8 @@ class GeiserCustomerPortalController extends Controller
 
         return CustomerPortalAccount::query()
             ->whereKey($accountId)
-<<<<<<< HEAD
-            ->where('dolibarr_thirdparty_id', self::CUSTOMER_ID)
-            ->where('portal_scope', CustomerPortalAccount::PORTAL_SCOPE_GEISER)
-=======
             ->where('dolibarr_thirdparty_id', static::CUSTOMER_ID)
             ->where('portal_scope', static::PORTAL_SCOPE)
->>>>>>> old-ticket-system/main
             ->where('is_active', true)
             ->first();
     }
@@ -1086,15 +943,9 @@ class GeiserCustomerPortalController extends Controller
     private function account(Request $request): CustomerPortalAccount
     {
         return CustomerPortalAccount::query()
-<<<<<<< HEAD
-            ->whereKey((int) $request->session()->get(self::SESSION_KEY))
-            ->where('dolibarr_thirdparty_id', self::CUSTOMER_ID)
-            ->where('portal_scope', CustomerPortalAccount::PORTAL_SCOPE_GEISER)
-=======
             ->whereKey((int) $request->session()->get(static::SESSION_KEY))
             ->where('dolibarr_thirdparty_id', static::CUSTOMER_ID)
             ->where('portal_scope', static::PORTAL_SCOPE)
->>>>>>> old-ticket-system/main
             ->where('is_active', true)
             ->firstOrFail();
     }
@@ -1103,13 +954,8 @@ class GeiserCustomerPortalController extends Controller
     {
         return CustomerPortalAccount::query()
             ->whereRaw('LOWER(email) = ?', [mb_strtolower($email)])
-<<<<<<< HEAD
-            ->where('dolibarr_thirdparty_id', self::CUSTOMER_ID)
-            ->where('portal_scope', CustomerPortalAccount::PORTAL_SCOPE_GEISER)
-=======
             ->where('dolibarr_thirdparty_id', static::CUSTOMER_ID)
             ->where('portal_scope', static::PORTAL_SCOPE)
->>>>>>> old-ticket-system/main
             ->where('is_active', true)
             ->first();
     }
@@ -1125,13 +971,8 @@ class GeiserCustomerPortalController extends Controller
             ! $magicLink
             || ! $magicLink->isUsable()
             || ! $magicLink->account?->is_active
-<<<<<<< HEAD
-            || ! $magicLink->account->isGeiserPortal()
-            || (int) $magicLink->account->dolibarr_thirdparty_id !== self::CUSTOMER_ID
-=======
             || ! $this->accountMatchesPortalScope($magicLink->account)
             || (int) $magicLink->account->dolibarr_thirdparty_id !== static::CUSTOMER_ID
->>>>>>> old-ticket-system/main
         ) {
             return null;
         }
@@ -1139,14 +980,11 @@ class GeiserCustomerPortalController extends Controller
         return $magicLink;
     }
 
-<<<<<<< HEAD
-=======
     protected function accountMatchesPortalScope(CustomerPortalAccount $account): bool
     {
         return $account->portal_scope === static::PORTAL_SCOPE;
     }
 
->>>>>>> old-ticket-system/main
     private function canViewTicket(CustomerPortalAccount $account, Ticket $ticket): bool
     {
         return (int) $ticket->dolibarr_customer_id === (int) $account->dolibarr_thirdparty_id;
@@ -1199,11 +1037,7 @@ class GeiserCustomerPortalController extends Controller
                         ?: trim(($ticket->customerMachineProfile?->manufacturer_snapshot ? $ticket->customerMachineProfile->manufacturer_snapshot.' / ' : '').($ticket->customerMachineProfile?->machine_ref_snapshot ?: '-')),
                     'contact_name' => $ticket->customerMachineProfile?->contact_name ?: $ticket->customer_contact_name_snapshot ?: '-',
                     'created_via_customer_portal' => (bool) $ticket->created_via_customer_portal,
-<<<<<<< HEAD
-                    'url' => route('geiser-portal.tickets.show', $ticket),
-=======
                     'url' => $this->portalRoute('tickets.show', $ticket),
->>>>>>> old-ticket-system/main
                 ])->all(),
             ],
         ];

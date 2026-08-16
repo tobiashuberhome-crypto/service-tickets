@@ -9,8 +9,6 @@ use Illuminate\Http\Request;
 
 class InternTicketApiController extends Controller
 {
-<<<<<<< HEAD
-=======
     public function index(Request $request): JsonResponse
     {
         $request->validate([
@@ -48,7 +46,6 @@ class InternTicketApiController extends Controller
         ]);
     }
 
->>>>>>> old-ticket-system/main
     public function store(Request $request): JsonResponse
     {
         $data = $request->validate([

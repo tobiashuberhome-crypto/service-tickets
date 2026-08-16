@@ -72,8 +72,6 @@
             </div>
         @endif
     </div>
-<<<<<<< HEAD
-=======
 
     @if ($tickets->isNotEmpty())
         <div class="panel panel-body" style="margin-top: 2rem;">
@@ -132,5 +130,4 @@
             @endforeach
         </div>
     @endif
->>>>>>> old-ticket-system/main
 @endsection

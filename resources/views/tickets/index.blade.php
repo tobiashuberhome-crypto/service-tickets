@@ -31,18 +31,11 @@
             <p class="muted">Service- und Reparaturauftraege nach Quellen und Kalenderwochen.</p>
         </div>
         <div class="button-row">
-<<<<<<< HEAD
-            <form id="delivery-note-form" method="post" action="{{ route('tickets.delivery-note') }}">
-                @csrf
-                <button class="btn secondary" type="button" id="select-all-tickets">Alle markieren</button>
-                <button class="btn" type="submit">Lieferschein erstellen</button>
-=======
             <form id="ticket-selection-form" method="post">
                 @csrf
                 <button class="btn secondary" type="button" id="select-all-tickets">Alle markieren</button>
                 <button class="btn secondary" type="submit" formaction="{{ route('tickets.delivery-note') }}">Lieferschein erstellen</button>
                 <button class="btn" type="submit" formaction="{{ route('tickets.monthly-invoice') }}">Monatsrechnung erstellen</button>
->>>>>>> old-ticket-system/main
             </form>
             <a class="btn" href="{{ route('tickets.create') }}">Neues Ticket</a>
         </div>
@@ -152,8 +145,6 @@
         </section>
     </div>
 
-<<<<<<< HEAD
-=======
     <div class="panel" style="margin-top: 2rem;">
         <div class="page-header" style="margin-bottom: 1rem;">
             <div>
@@ -199,7 +190,6 @@
         @endforelse
     </div>
 
->>>>>>> old-ticket-system/main
     <div style="margin-top:1rem;">
         <button type="button" id="add-week-column" class="btn secondary">+ Weitere KW</button>
     </div>
