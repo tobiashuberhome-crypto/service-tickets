@@ -12,4 +12,16 @@ class CibenaCustomerPortalController extends GeiserCustomerPortalController
     protected const PORTAL_ROUTE_PREFIX = 'cibena-portal';
     protected const VIEW_PREFIX = 'customer-portal-cibena';
     protected const PORTAL_NAME = 'Cibena-Serviceportal';
+
+    /**
+     * @return array<int>
+     */
+    protected function customerIdsForPortal(CustomerPortalAccount $account): array
+    {
+        return array_values(array_unique([
+            9,
+            10,
+            (int) $account->dolibarr_thirdparty_id,
+        ]));
+    }
 }

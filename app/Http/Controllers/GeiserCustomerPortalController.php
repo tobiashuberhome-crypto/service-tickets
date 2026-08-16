@@ -230,8 +230,9 @@ class GeiserCustomerPortalController extends Controller
     {
         $account = $this->account($request);
         $hideReturned = $request->boolean('hide_returned');
+        $customerIds = $this->customerIdsForPortal($account);
         $tickets = Ticket::query()
-            ->where('dolibarr_customer_id', $account->dolibarr_thirdparty_id)
+            ->whereIn('dolibarr_customer_id', $customerIds)
             ->when($hideReturned, fn ($query) => $query->where('machine_returned', false))
             ->with(['customerMachine', 'customerMachineProfile'])
             ->latest()
@@ -271,9 +272,10 @@ class GeiserCustomerPortalController extends Controller
             'ticket_ids.*' => ['integer', 'exists:tickets,id'],
         ]);
 
+        $customerIds = $this->customerIdsForPortal($account);
         $tickets = Ticket::query()
             ->with(['customerMachine', 'customerMachineProfile', 'parts', 'serviceLines'])
-            ->where('dolibarr_customer_id', $account->dolibarr_thirdparty_id)
+            ->whereIn('dolibarr_customer_id', $customerIds)
             ->whereIn('id', $data['ticket_ids'])
             ->orderBy('acceptance_date')
             ->orderBy('ticket_number')
@@ -337,8 +339,9 @@ class GeiserCustomerPortalController extends Controller
         $serialNumber = trim($data['serial_number']);
         $history = $this->ticketHistoryData($account, $serialNumber);
 
+        $customerIds = $this->customerIdsForPortal($account);
         $profile = CustomerMachineProfile::query()
-            ->where('dolibarr_customer_id', $account->dolibarr_thirdparty_id)
+            ->whereIn('dolibarr_customer_id', $customerIds)
             ->where('serial_number', $serialNumber)
             ->first();
 
@@ -985,9 +988,17 @@ class GeiserCustomerPortalController extends Controller
         return $account->portal_scope === static::PORTAL_SCOPE;
     }
 
+    /**
+     * @return array<int>
+     */
+    protected function customerIdsForPortal(CustomerPortalAccount $account): array
+    {
+        return [(int) $account->dolibarr_thirdparty_id];
+    }
+
     private function canViewTicket(CustomerPortalAccount $account, Ticket $ticket): bool
     {
-        return (int) $ticket->dolibarr_customer_id === (int) $account->dolibarr_thirdparty_id;
+        return in_array((int) $ticket->dolibarr_customer_id, $this->customerIdsForPortal($account), true);
     }
 
     private function canEditTicket(CustomerPortalAccount $account, Ticket $ticket): bool
@@ -1007,8 +1018,9 @@ class GeiserCustomerPortalController extends Controller
 
     private function ticketHistoryData(CustomerPortalAccount $account, string $serialNumber): array
     {
+        $customerIds = $this->customerIdsForPortal($account);
         $tickets = Ticket::query()
-            ->where('dolibarr_customer_id', $account->dolibarr_thirdparty_id)
+            ->whereIn('dolibarr_customer_id', $customerIds)
             ->where(function ($query) use ($serialNumber): void {
                 $query->whereHas('customerMachineProfile', function ($profileQuery) use ($serialNumber): void {
                     $profileQuery->where('serial_number', $serialNumber);
