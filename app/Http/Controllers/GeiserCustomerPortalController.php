@@ -45,7 +45,7 @@ class GeiserCustomerPortalController extends Controller
         'estimate_qty_service_fee' => 1.0,
         'estimate_qty_vde' => 1.0,
         'estimate_qty_consumables' => 1.0,
-		'repair_approval_limit' => 200,00,
+        'repair_approval_limit' => 200.00,
     ];
 
     protected function portalRouteName(string $name): string
