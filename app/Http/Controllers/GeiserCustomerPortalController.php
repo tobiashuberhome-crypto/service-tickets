@@ -300,7 +300,7 @@ class GeiserCustomerPortalController extends Controller
 
         $invoiceSummary = $invoiceCalculator->summarizeMany($tickets);
 
-        $hoursLines = collect($invoiceSummary['invoiceLines'])->where('type', 'Leistung')->values();
+        $hoursLines = collect($invoiceSummary['invoiceLines'])->where('is_nm_service', true)->values();
         $monthlyTotalHours = round((float) $hoursLines->sum('quantity'), 2);
 
         $monthDate = $tickets->first()->acceptance_date ?? $tickets->first()->created_at ?? now();

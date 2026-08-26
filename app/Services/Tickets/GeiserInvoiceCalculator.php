@@ -50,6 +50,7 @@ class GeiserInvoiceCalculator
             'unit_price' => (float) $line->sales_price_snapshot,
             'vat_rate' => $this->normalizeVatRate($line->vat_rate_snapshot),
             'discount_rate' => $isNmService ? 0.0 : 0.20,
+            'is_nm_service' => $isNmService,
         ];
     }
 
@@ -67,6 +68,7 @@ class GeiserInvoiceCalculator
             'unit_price' => (float) $part->sales_price_snapshot,
             'vat_rate' => $this->normalizeVatRate($part->vat_rate_snapshot),
             'discount_rate' => 0.20,
+            'is_nm_service' => false,
         ];
     }
 
@@ -116,8 +118,23 @@ class GeiserInvoiceCalculator
         $totalVat = round((float) $invoiceLines->sum('vat_amount'), 2);
         $totalGross = round((float) $invoiceLines->sum('line_gross_after_discount'), 2);
 
+        $ticketTotals = $tickets
+            ->map(function (Ticket $ticket) use ($invoiceLines): array {
+                $ticketLines = $invoiceLines->where('ticket_number', $ticket->ticket_number);
+
+                return [
+                    'ticket_number' => $ticket->ticket_number,
+                    'dolibarr_order_ref' => $ticket->dolibarr_order_ref,
+                    'machine_label' => $ticketLines->first()['machine_label'] ?? $this->machineLabel($ticket),
+                    'serial_number' => $ticket->customerMachine?->serial_number ?: $ticket->customerMachineProfile?->serial_number ?: '-',
+                    'total' => round((float) $ticketLines->sum('line_gross_after_discount'), 2),
+                ];
+            })
+            ->values();
+
         return [
             'invoiceLines' => $invoiceLines,
+            'ticketTotals' => $ticketTotals,
             'totalOriginalNet' => $totalOriginalNet,
             'totalDiscountAmount' => $totalDiscountAmount,
             'totalNet' => $totalNet,

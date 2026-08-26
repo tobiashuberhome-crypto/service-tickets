@@ -14,7 +14,6 @@
         .table { width: 100%; border-collapse: collapse; margin-top: 5px; }
         .table th, .table td { border: 1px solid #d1d5db; padding: 4px 5px; text-align: left; vertical-align: top; }
         .table th { background: #f3f4f6; }
-        .copy-block { white-space: pre-wrap; font-size: 8px; line-height: 1.25; }
         .amount { text-align: right; white-space: nowrap; }
         .section { margin-top: 12px; }
     </style>
@@ -84,94 +83,54 @@
     </div>
 
     <div class="section">
-        <h2>Leistungspositionen (aus Admin)</h2>
+        <h2>Tickets</h2>
         <table class="table">
             <thead>
                 <tr>
-                    <th style="width: 10%;">Ticket</th>
-                    <th style="width: 12%;">Maschine</th>
-                    <th style="width: 8%;">Typ</th>
-                    <th style="width: 8%;">Ref</th>
-                    <th>Leistung / Artikel</th>
-                    <th style="width: 7%;" class="amount">Menge</th>
-                    <th style="width: 10%;" class="amount">VK</th>
-                    <th style="width: 8%;" class="amount">Rabatt</th>
-                    <th style="width: 10%;" class="amount">Preis</th>
+                    <th style="width: 15%;">Ticket</th>
+                    <th>Maschine</th>
+                    <th style="width: 20%;">Seriennummer</th>
+                    <th style="width: 15%;" class="amount">Betrag</th>
                 </tr>
             </thead>
             <tbody>
-                @forelse ($invoiceLines as $line)
+                @forelse ($ticketTotals as $ticketTotal)
                     <tr>
-                        <td>{{ $line['ticket_number'] }}</td>
-                        <td>{{ $line['machine_label'] }}</td>
-                        <td>{{ $line['type'] }}</td>
-                        <td>{{ $line['reference'] }}</td>
-                        <td>{{ $line['description'] }}</td>
-                        <td class="amount">{{ number_format((float) $line['quantity'], 2, ',', '.') }}</td>
-                        <td class="amount">{{ number_format((float) $line['unit_price'], 2, ',', '.') }} EUR</td>
-                        <td class="amount">
-                            @if (($line['discount_rate'] ?? 0) > 0)
-                                {{ number_format((float) (($line['discount_rate'] ?? 0) * 100), 0, ',', '.') }} %
-                            @else
-                                -
-                            @endif
-                        </td>
-                        <td class="amount"><strong>{{ number_format((float) $line['discounted_total'], 2, ',', '.') }} EUR</strong></td>
+                        <td>{{ $ticketTotal['dolibarr_order_ref'] ?: $ticketTotal['ticket_number'] }}</td>
+                        <td>{{ $ticketTotal['machine_label'] }}</td>
+                        <td>{{ $ticketTotal['serial_number'] }}</td>
+                        <td class="amount"><strong>{{ number_format((float) $ticketTotal['total'], 2, ',', '.') }} EUR</strong></td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="9">Keine Positionen aus der Admin vorhanden.</td>
+                        <td colspan="4">Keine Tickets vorhanden.</td>
                     </tr>
                 @endforelse
             </tbody>
             <tfoot>
                 <tr>
-                    <td colspan="8" class="amount"><strong>Summe VK</strong></td>
+                    <td colspan="3" class="amount"><strong>Summe VK</strong></td>
                     <td class="amount">{{ number_format($totalOriginalNet, 2, ',', '.') }} EUR</td>
                 </tr>
                 <tr>
-                    <td colspan="8" class="amount"><strong>Rabatt gesamt</strong></td>
+                    <td colspan="3" class="amount"><strong>Rabatt gesamt</strong></td>
                     <td class="amount">- {{ number_format($totalDiscountAmount, 2, ',', '.') }} EUR</td>
                 </tr>
                 <tr>
-                    <td colspan="8" class="amount"><strong>Gesamt netto</strong></td>
+                    <td colspan="3" class="amount"><strong>Gesamt netto</strong></td>
                     <td class="amount"><strong>{{ number_format($totalNet, 2, ',', '.') }} EUR</strong></td>
                 </tr>
                 <tr>
-                    <td colspan="8" class="amount"><strong>{{ $vatLabel }}</strong></td>
+                    <td colspan="3" class="amount"><strong>{{ $vatLabel }}</strong></td>
                     <td class="amount">{{ number_format($totalVat, 2, ',', '.') }} EUR</td>
                 </tr>
                 <tr>
-                    <td colspan="8" class="amount"><strong>Gesamt brutto</strong></td>
+                    <td colspan="3" class="amount"><strong>Gesamt brutto</strong></td>
                     <td class="amount"><strong>{{ number_format($totalGross, 2, ',', '.') }} EUR</strong></td>
                 </tr>
             </tfoot>
         </table>
         <p class="muted" style="margin-top: 6px;">Auf Ersatzteile wird automatisch 20 % Rabatt gewaehrt. Arbeitsleistungen bleiben unveraendert.</p>
-    </div>
-
-    <div class="section">
-        <h2>Copy-&-Paste-Textblöcke je Position</h2>
-        <table class="table">
-            <thead>
-                <tr>
-                    <th style="width: 8%;">Pos.</th>
-                    <th>Textblock</th>
-                </tr>
-            </thead>
-            <tbody>
-                @forelse ($invoiceLines as $index => $line)
-                    <tr>
-                        <td>{{ $index + 1 }}</td>
-                        <td><div class="copy-block">{{ $line['copy_text'] }}</div></td>
-                    </tr>
-                @empty
-                    <tr>
-                        <td colspan="2">Keine Textblöcke vorhanden.</td>
-                    </tr>
-                @endforelse
-            </tbody>
-        </table>
     </div>
 
     <div class="section">
