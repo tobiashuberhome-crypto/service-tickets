@@ -88,6 +88,53 @@ class GeiserInvoiceCalculator
         return $line;
     }
 
+    /**
+     * Combines invoiceLines and totals from multiple tickets into a single invoice, e.g. for a
+     * monthly invoice covering several tickets of the same customer. Each line is tagged with
+     * the ticket/machine it came from so the combined table stays traceable.
+     *
+     * @param  Collection<int, Ticket>  $tickets
+     */
+    public function summarizeMany(Collection $tickets): array
+    {
+        $invoiceLines = $tickets
+            ->flatMap(function (Ticket $ticket): Collection {
+                $lines = $this->withCopyTexts($ticket, $this->summarize($ticket)['invoiceLines']);
+
+                return $lines->map(function (array $line) use ($ticket): array {
+                    $line['ticket_number'] = $ticket->ticket_number;
+                    $line['machine_label'] = $this->machineLabel($ticket);
+
+                    return $line;
+                });
+            })
+            ->values();
+
+        $totalOriginalNet = round((float) $invoiceLines->sum('line_gross'), 2);
+        $totalDiscountAmount = round((float) $invoiceLines->sum('discount_amount_gross'), 2);
+        $totalNet = round((float) $invoiceLines->sum('line_net_after_discount'), 2);
+        $totalVat = round((float) $invoiceLines->sum('vat_amount'), 2);
+        $totalGross = round((float) $invoiceLines->sum('line_gross_after_discount'), 2);
+
+        return [
+            'invoiceLines' => $invoiceLines,
+            'totalOriginalNet' => $totalOriginalNet,
+            'totalDiscountAmount' => $totalDiscountAmount,
+            'totalNet' => $totalNet,
+            'totalVat' => $totalVat,
+            'totalGross' => $totalGross,
+            'vatLabel' => $this->buildVatLabel($invoiceLines),
+        ];
+    }
+
+    private function machineLabel(Ticket $ticket): string
+    {
+        $manufacturer = trim((string) ($ticket->customerMachine?->manufacturer_snapshot ?: $ticket->customerMachineProfile?->manufacturer_snapshot));
+        $machineRef = trim((string) ($ticket->customerMachine?->machine_ref_snapshot ?: $ticket->customerMachineProfile?->machine_ref_snapshot));
+
+        return trim($manufacturer.' '.$machineRef) ?: '-';
+    }
+
     public function withCopyTexts(Ticket $ticket, Collection $invoiceLines): Collection
     {
         return $invoiceLines->map(function (array $line) use ($ticket): array {

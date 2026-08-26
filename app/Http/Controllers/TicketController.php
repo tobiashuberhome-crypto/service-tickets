@@ -494,7 +494,7 @@ class TicketController extends Controller
         return $pdf->download($fileName);
     }
 
-    public function generateMonthlyInvoice(Request $request, GeiserInvoiceCalculator $invoiceCalculator)
+    public function generateMonthlyInvoice(Request $request, DolibarrClient $dolibarr, GeiserInvoiceCalculator $invoiceCalculator)
     {
         $data = $request->validate([
             'ticket_ids' => ['required', 'array', 'min:1'],
@@ -512,39 +512,34 @@ class TicketController extends Controller
             return back()->with('warning', 'Es wurden keine Tickets für die Monatsrechnung ausgewählt.');
         }
 
-        $invoiceSummaryByTicket = $tickets
-            ->mapWithKeys(fn (Ticket $ticket): array => [(string) $ticket->id => $invoiceCalculator->summarize($ticket)])
-            ->all();
-        $monthlyTotalGross = round(
-            (float) collect($invoiceSummaryByTicket)->sum(fn (array $summary): float => (float) ($summary['totalGross'] ?? 0)),
-            2
-        );
+        if ($tickets->pluck('dolibarr_customer_id')->unique()->count() > 1) {
+            return back()->with('warning', 'Eine Monatsrechnung kann nur Tickets desselben Kunden enthalten. Bitte Auswahl auf einen Kunden eingrenzen.');
+        }
 
-        $hoursByTicket = collect($invoiceSummaryByTicket)
-            ->map(fn (array $summary): float => round(
-                (float) collect($summary['invoiceLines'])->where('type', 'Leistung')->sum('quantity'),
-                2
-            ))
-            ->all();
-        $monthlyTotalHours = round((float) array_sum($hoursByTicket), 2);
+        $invoiceRecipient = $dolibarr->getCustomer((int) $tickets->first()->dolibarr_customer_id);
+        $invoiceSummary = $invoiceCalculator->summarizeMany($tickets);
+
+        $hoursLines = collect($invoiceSummary['invoiceLines'])->where('type', 'Leistung')->values();
+        $monthlyTotalHours = round((float) $hoursLines->sum('quantity'), 2);
 
         $monthDate = $tickets->first()->acceptance_date ?? $tickets->first()->created_at ?? now();
         $monthLabel = $monthDate->copy()->locale('de')->translatedFormat('F Y');
         $fileName = 'monatsrechnung-'.$monthDate->copy()->format('Y-m').'.pdf';
         $hoursFileName = 'stundennachweis-'.$monthDate->copy()->format('Y-m').'.pdf';
+        $invoiceNumber = 'MON-'.$monthDate->copy()->format('Ym').'-'.$tickets->first()->dolibarr_customer_id;
 
         $letterhead = [
             'sender' => config('geiser_invoice.sender', []),
             'bank' => config('geiser_invoice.bank', []),
             'footerNote' => (string) config('geiser_invoice.footer_note', ''),
+            'invoiceRecipient' => $invoiceRecipient,
+            'invoiceNumber' => $invoiceNumber,
         ];
 
-        $payload = array_merge($letterhead, [
+        $payload = array_merge($letterhead, $invoiceSummary, [
             'tickets' => $tickets,
             'createdAt' => now(),
-            'invoiceSummaryByTicket' => $invoiceSummaryByTicket,
             'monthLabel' => $monthLabel,
-            'monthlyTotalGross' => $monthlyTotalGross,
         ]);
 
         if (! class_exists(Pdf::class)) {
@@ -563,7 +558,7 @@ class TicketController extends Controller
         $hoursPayload = array_merge($letterhead, [
             'tickets' => $tickets,
             'createdAt' => now(),
-            'hoursByTicket' => $hoursByTicket,
+            'hoursLines' => $hoursLines,
             'monthLabel' => $monthLabel,
             'monthlyTotalHours' => $monthlyTotalHours,
         ]);
