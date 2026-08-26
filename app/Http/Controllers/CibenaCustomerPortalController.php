@@ -45,7 +45,7 @@ class CibenaCustomerPortalController extends GeiserCustomerPortalController
             'invoices' => $invoices,
         ]);
     }
-	public function downloadMonthlyInvoice(Request $request, \App\Models\MonthlyInvoice $monthlyInvoice)
+	public function downloadMonthlyInvoice(Request $request, \App\Models\MonthlyInvoice $monthlyInvoice, \App\Services\Dolibarr\DolibarrClient $dolibarr, GeiserInvoiceCalculator $invoiceCalculator)
 {
     $account = $this->account($request);
 
@@ -61,29 +61,19 @@ class CibenaCustomerPortalController extends GeiserCustomerPortalController
         ->orderBy('ticket_number')
         ->get();
 
-    $invoiceCalculator = app(GeiserInvoiceCalculator::class);
+    $invoiceRecipient = $dolibarr->getCustomer((int) $monthlyInvoice->dolibarr_customer_id);
+    $invoiceSummary = $invoiceCalculator->summarizeMany($tickets);
 
-    $invoiceSummaryByTicket = $tickets
-        ->mapWithKeys(fn (\App\Models\Ticket $ticket): array => [
-            (string) $ticket->id => $invoiceCalculator->summarize($ticket),
-        ])
-        ->all();
-
-    $monthlyTotalGross = round(
-        (float) collect($invoiceSummaryByTicket)->sum(fn (array $summary): float => (float) ($summary['totalGross'] ?? 0)),
-        2
-    );
-
-    $monthLabel = $monthlyInvoice->invoice_label;
-
-    $payload = [
+    $payload = array_merge($invoiceSummary, [
         'tickets' => $tickets,
         'createdAt' => $monthlyInvoice->generated_at ?? now(),
-        'invoiceSummaryByTicket' => $invoiceSummaryByTicket,
-        'monthLabel' => $monthLabel,
-        'monthlyTotalGross' => $monthlyTotalGross,
+        'monthLabel' => $monthlyInvoice->invoice_label,
+        'sender' => config('geiser_invoice.sender', []),
+        'bank' => config('geiser_invoice.bank', []),
+        'footerNote' => (string) config('geiser_invoice.footer_note', ''),
+        'invoiceRecipient' => $invoiceRecipient,
         'monthlyInvoice' => $monthlyInvoice,
-    ];
+    ]);
 
     if (! class_exists(\Barryvdh\DomPDF\Facade\Pdf::class)) {
         return response()->view($this->portalView('monthly-invoice'), $payload);

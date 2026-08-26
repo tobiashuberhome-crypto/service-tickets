@@ -9,6 +9,7 @@ use App\Models\CustomerPortalAccount;
 use App\Models\CustomerPortalMagicLink;
 use App\Models\MonthlyInvoice;
 use App\Models\Ticket;
+use App\Services\Dolibarr\DolibarrClient;
 use App\Services\Ocr\OcrService;
 use App\Services\Ocr\OcrDataParser;
 use App\Services\Tickets\DolibarrOrderSyncService;
@@ -265,7 +266,7 @@ class GeiserCustomerPortalController extends Controller
         ]);
     }
 
-    public function generateMonthlyInvoice(Request $request, GeiserInvoiceCalculator $invoiceCalculator)
+    public function generateMonthlyInvoice(Request $request, DolibarrClient $dolibarr, GeiserInvoiceCalculator $invoiceCalculator)
     {
         $account = $this->account($request);
         $data = $request->validate([
@@ -287,17 +288,15 @@ class GeiserCustomerPortalController extends Controller
                 ->with('warning', 'Es wurden keine Tickets fÃ¼r die Monatsrechnung ausgewÃ¤hlt.');
         }
 
-        $invoiceSummaryByTicket = $tickets
-            ->mapWithKeys(fn (Ticket $ticket): array => [(string) $ticket->id => $invoiceCalculator->summarize($ticket)])
-            ->all();
-        $monthlyTotalGross = round(
-            (float) collect($invoiceSummaryByTicket)->sum(fn (array $summary): float => (float) ($summary['totalGross'] ?? 0)),
-            2
-        );
+        $invoiceRecipient = $dolibarr->getCustomer((int) $account->dolibarr_thirdparty_id);
+        $invoiceSummary = $invoiceCalculator->summarizeMany($tickets);
+
+        $hoursLines = collect($invoiceSummary['invoiceLines'])->where('type', 'Leistung')->values();
+        $monthlyTotalHours = round((float) $hoursLines->sum('quantity'), 2);
 
         $monthDate = $tickets->first()->acceptance_date ?? $tickets->first()->created_at ?? now();
         $monthLabel = $monthDate->copy()->locale('de')->translatedFormat('F Y');
-        
+
         // Calculate sequence number for multiple invoices in the same month
         $existingInvoices = MonthlyInvoice::query()
             ->where('portal_scope', static::PORTAL_SCOPE)
@@ -305,9 +304,10 @@ class GeiserCustomerPortalController extends Controller
             ->where('invoice_year', (int) $monthDate->format('Y'))
             ->where('invoice_month', (int) $monthDate->format('m'))
             ->max('sequence_number') ?? 0;
-        
+
         $sequenceNumber = $existingInvoices + 1;
         $fileName = 'monatsrechnung-'.$monthDate->copy()->format('Y-m').'-'.$sequenceNumber.'.pdf';
+        $hoursFileName = 'stundennachweis-'.$monthDate->copy()->format('Y-m').'-'.$sequenceNumber.'.pdf';
 
         // Create MonthlyInvoice record and associate tickets
         $monthlyInvoice = MonthlyInvoice::query()->create([
@@ -322,22 +322,53 @@ class GeiserCustomerPortalController extends Controller
         // Associate tickets with the invoice
         $monthlyInvoice->tickets()->attach($tickets->pluck('id')->toArray());
 
-        $payload = [
+        $letterhead = [
+            'sender' => config('geiser_invoice.sender', []),
+            'bank' => config('geiser_invoice.bank', []),
+            'footerNote' => (string) config('geiser_invoice.footer_note', ''),
+            'invoiceRecipient' => $invoiceRecipient,
+        ];
+
+        $payload = array_merge($letterhead, $invoiceSummary, [
             'tickets' => $tickets,
             'createdAt' => now(),
-            'invoiceSummaryByTicket' => $invoiceSummaryByTicket,
             'monthLabel' => $monthLabel,
-            'monthlyTotalGross' => $monthlyTotalGross,
             'monthlyInvoice' => $monthlyInvoice,
-        ];
+        ]);
 
         if (! class_exists(Pdf::class)) {
             return response()->view($this->portalView('monthly-invoice'), $payload);
         }
 
-        $pdf = Pdf::loadView($this->portalView('monthly-invoice'), $payload)->setPaper('a4', 'portrait');
+        $invoicePdfBinary = Pdf::loadView($this->portalView('monthly-invoice'), $payload)->setPaper('a4', 'portrait')->output();
 
-        return $pdf->download($fileName);
+        if (! class_exists(\ZipArchive::class)) {
+            return response($invoicePdfBinary, 200, [
+                'Content-Type' => 'application/pdf',
+                'Content-Disposition' => 'attachment; filename="'.$fileName.'"',
+            ]);
+        }
+
+        $hoursPayload = array_merge($letterhead, [
+            'tickets' => $tickets,
+            'createdAt' => now(),
+            'hoursLines' => $hoursLines,
+            'monthLabel' => $monthLabel,
+            'monthlyTotalHours' => $monthlyTotalHours,
+            'monthlyInvoice' => $monthlyInvoice,
+        ]);
+        $hoursPdfBinary = Pdf::loadView($this->portalView('monthly-invoice-hours'), $hoursPayload)->setPaper('a4', 'portrait')->output();
+
+        $zipPath = tempnam(sys_get_temp_dir(), 'monatsrechnung_').'.zip';
+        $zip = new \ZipArchive();
+        $zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE);
+        $zip->addFromString($fileName, $invoicePdfBinary);
+        $zip->addFromString($hoursFileName, $hoursPdfBinary);
+        $zip->close();
+
+        $zipFileName = 'monatsrechnung-'.$monthDate->copy()->format('Y-m').'-'.$sequenceNumber.'.zip';
+
+        return response()->download($zipPath, $zipFileName)->deleteFileAfterSend(true);
     }
 
     public function createTicket(Request $request): View
