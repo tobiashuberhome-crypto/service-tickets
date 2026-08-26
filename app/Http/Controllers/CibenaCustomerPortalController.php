@@ -61,7 +61,16 @@ class CibenaCustomerPortalController extends GeiserCustomerPortalController
         ->orderBy('ticket_number')
         ->get();
 
-    $invoiceRecipient = $dolibarr->getCustomer((int) $monthlyInvoice->dolibarr_customer_id);
+    try {
+        $invoiceRecipient = $dolibarr->getCustomer((int) $monthlyInvoice->dolibarr_customer_id);
+    } catch (\Throwable $exception) {
+        \Illuminate\Support\Facades\Log::warning('Monatsrechnung-Download: Dolibarr-Kunde konnte nicht geladen werden, verwende Ticket-Snapshot.', [
+            'dolibarr_customer_id' => $monthlyInvoice->dolibarr_customer_id,
+            'error' => $exception->getMessage(),
+        ]);
+        $invoiceRecipient = ['name' => $tickets->first()?->customer_name_snapshot];
+    }
+
     $invoiceSummary = $invoiceCalculator->summarizeMany($tickets);
 
     $payload = array_merge($invoiceSummary, [

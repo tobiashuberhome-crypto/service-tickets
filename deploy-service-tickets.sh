@@ -57,6 +57,10 @@ on_error() {
     exit_code=$?
     line_no="${1:-unknown}"
 
+    # Wird auch bei ganz normalem, erfolgreichem Skriptende (Signal 0) aufgerufen -
+    # in dem Fall ist exit_code 0 und es gibt nichts rueckgaengig zu machen.
+    [ "$exit_code" -eq 0 ] && return 0
+
     printf '\n==================================================\n' >&2
     printf 'DEPLOYMENT FEHLGESCHLAGEN\n' >&2
     printf 'Zeile: %s\n' "$line_no" >&2
@@ -68,6 +72,7 @@ on_error() {
     exit "$exit_code"
 }
 
+set -e
 trap 'on_error $LINENO' 0 1 2 3 15
 
 echo "=================================================="

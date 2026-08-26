@@ -288,7 +288,16 @@ class GeiserCustomerPortalController extends Controller
                 ->with('warning', 'Es wurden keine Tickets fÃ¼r die Monatsrechnung ausgewÃ¤hlt.');
         }
 
-        $invoiceRecipient = $dolibarr->getCustomer((int) $account->dolibarr_thirdparty_id);
+        try {
+            $invoiceRecipient = $dolibarr->getCustomer((int) $account->dolibarr_thirdparty_id);
+        } catch (Throwable $exception) {
+            Log::warning('Monatsrechnung (Portal): Dolibarr-Kunde konnte nicht geladen werden, verwende Konto-Snapshot.', [
+                'dolibarr_thirdparty_id' => $account->dolibarr_thirdparty_id,
+                'error' => $exception->getMessage(),
+            ]);
+            $invoiceRecipient = ['name' => $account->company_name];
+        }
+
         $invoiceSummary = $invoiceCalculator->summarizeMany($tickets);
 
         $hoursLines = collect($invoiceSummary['invoiceLines'])->where('type', 'Leistung')->values();

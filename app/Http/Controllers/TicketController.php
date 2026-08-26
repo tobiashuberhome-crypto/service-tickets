@@ -516,7 +516,16 @@ class TicketController extends Controller
             return back()->with('warning', 'Eine Monatsrechnung kann nur Tickets desselben Kunden enthalten. Bitte Auswahl auf einen Kunden eingrenzen.');
         }
 
-        $invoiceRecipient = $dolibarr->getCustomer((int) $tickets->first()->dolibarr_customer_id);
+        try {
+            $invoiceRecipient = $dolibarr->getCustomer((int) $tickets->first()->dolibarr_customer_id);
+        } catch (Throwable $exception) {
+            Log::warning('Monatsrechnung: Dolibarr-Kunde konnte nicht geladen werden, verwende Ticket-Snapshot.', [
+                'dolibarr_customer_id' => $tickets->first()->dolibarr_customer_id,
+                'error' => $exception->getMessage(),
+            ]);
+            $invoiceRecipient = ['name' => $tickets->first()->customer_name_snapshot];
+        }
+
         $invoiceSummary = $invoiceCalculator->summarizeMany($tickets);
 
         $hoursLines = collect($invoiceSummary['invoiceLines'])->where('type', 'Leistung')->values();
