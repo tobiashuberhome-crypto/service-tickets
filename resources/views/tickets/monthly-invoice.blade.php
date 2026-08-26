@@ -87,10 +87,11 @@
         <table class="table">
             <thead>
                 <tr>
-                    <th style="width: 15%;">Ticket</th>
+                    <th style="width: 13%;">Ticket</th>
                     <th>Maschine</th>
-                    <th style="width: 20%;">Seriennummer</th>
-                    <th style="width: 15%;" class="amount">Betrag</th>
+                    <th style="width: 17%;">Seriennummer</th>
+                    <th style="width: 13%;" class="amount">MwSt.</th>
+                    <th style="width: 15%;" class="amount">Betrag (brutto)</th>
                 </tr>
             </thead>
             <tbody>
@@ -99,17 +100,24 @@
                         <td>{{ $ticketTotal['dolibarr_order_ref'] ?: $ticketTotal['ticket_number'] }}</td>
                         <td>{{ $ticketTotal['machine_label'] }}</td>
                         <td>{{ $ticketTotal['serial_number'] }}</td>
+                        <td class="amount">{{ number_format((float) $ticketTotal['vat_amount'], 2, ',', '.') }} EUR</td>
                         <td class="amount"><strong>{{ number_format((float) $ticketTotal['total'], 2, ',', '.') }} EUR</strong></td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="4">Keine Tickets vorhanden.</td>
+                        <td colspan="5">Keine Tickets vorhanden.</td>
                     </tr>
                 @endforelse
             </tbody>
             <tfoot>
                 <tr>
-                    <td colspan="3" class="amount"><strong>Gesamtsumme</strong></td>
+                    <td colspan="3" class="amount"><strong>{{ $vatLabel }}, im Bruttobetrag enthalten</strong></td>
+                    <td class="amount">{{ number_format((float) collect($ticketTotals)->sum('vat_amount'), 2, ',', '.') }} EUR</td>
+                    <td></td>
+                </tr>
+                <tr>
+                    <td colspan="3" class="amount"><strong>Gesamtsumme (brutto)</strong></td>
+                    <td></td>
                     <td class="amount"><strong>{{ number_format((float) collect($ticketTotals)->sum('total'), 2, ',', '.') }} EUR</strong></td>
                 </tr>
             </tfoot>

@@ -128,6 +128,7 @@ class GeiserInvoiceCalculator
                     'machine_label' => $ticketLines->first()['machine_label'] ?? $this->machineLabel($ticket),
                     'serial_number' => $ticket->customerMachine?->serial_number ?: $ticket->customerMachineProfile?->serial_number ?: '-',
                     'total' => round((float) $ticketLines->sum('line_gross_after_discount'), 2),
+                    'vat_amount' => round((float) $ticketLines->sum('vat_amount'), 2),
                 ];
             })
             ->values();
