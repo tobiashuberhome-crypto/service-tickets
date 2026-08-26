@@ -7,6 +7,7 @@ use App\Models\CustomerMachine;
 use App\Models\CustomerMachineProfile;
 use App\Models\CustomerPortalAccount;
 use App\Models\CustomerPortalMagicLink;
+use App\Models\MonthlyInvoice;
 use App\Models\Ticket;
 use App\Services\Ocr\OcrService;
 use App\Services\Ocr\OcrDataParser;
@@ -283,7 +284,7 @@ class GeiserCustomerPortalController extends Controller
 
         if ($tickets->isEmpty()) {
             return redirect()->route($this->portalRouteName('dashboard'))
-                ->with('warning', 'Es wurden keine Tickets für die Monatsrechnung ausgewählt.');
+                ->with('warning', 'Es wurden keine Tickets fÃ¼r die Monatsrechnung ausgewÃ¤hlt.');
         }
 
         $invoiceSummaryByTicket = $tickets
@@ -296,7 +297,30 @@ class GeiserCustomerPortalController extends Controller
 
         $monthDate = $tickets->first()->acceptance_date ?? $tickets->first()->created_at ?? now();
         $monthLabel = $monthDate->copy()->locale('de')->translatedFormat('F Y');
-        $fileName = 'monatsrechnung-'.$monthDate->copy()->format('Y-m').'.pdf';
+        
+        // Calculate sequence number for multiple invoices in the same month
+        $existingInvoices = MonthlyInvoice::query()
+            ->where('portal_scope', static::PORTAL_SCOPE)
+            ->where('dolibarr_customer_id', $account->dolibarr_thirdparty_id)
+            ->where('invoice_year', (int) $monthDate->format('Y'))
+            ->where('invoice_month', (int) $monthDate->format('m'))
+            ->max('sequence_number') ?? 0;
+        
+        $sequenceNumber = $existingInvoices + 1;
+        $fileName = 'monatsrechnung-'.$monthDate->copy()->format('Y-m').'-'.$sequenceNumber.'.pdf';
+
+        // Create MonthlyInvoice record and associate tickets
+        $monthlyInvoice = MonthlyInvoice::query()->create([
+            'portal_scope' => static::PORTAL_SCOPE,
+            'dolibarr_customer_id' => $account->dolibarr_thirdparty_id,
+            'invoice_year' => (int) $monthDate->format('Y'),
+            'invoice_month' => (int) $monthDate->format('m'),
+            'sequence_number' => $sequenceNumber,
+            'generated_at' => now(),
+        ]);
+
+        // Associate tickets with the invoice
+        $monthlyInvoice->tickets()->attach($tickets->pluck('id')->toArray());
 
         $payload = [
             'tickets' => $tickets,
@@ -304,6 +328,7 @@ class GeiserCustomerPortalController extends Controller
             'invoiceSummaryByTicket' => $invoiceSummaryByTicket,
             'monthLabel' => $monthLabel,
             'monthlyTotalGross' => $monthlyTotalGross,
+            'monthlyInvoice' => $monthlyInvoice,
         ];
 
         if (! class_exists(Pdf::class)) {
@@ -480,7 +505,7 @@ class GeiserCustomerPortalController extends Controller
         $machine->forceFill([
             'customer_name_snapshot' => $account->company_name,
             'manufacturer_snapshot' => $profile->manufacturer_snapshot,
-            'machine_ref_snapshot' => $profile->machine_ref_snapshot ?: ($data['machine_ref_snapshot'] ?? '—'),
+            'machine_ref_snapshot' => $profile->machine_ref_snapshot ?: ($data['machine_ref_snapshot'] ?? 'â€”'),
         ])->save();
 
         $ticket = Ticket::query()->create([
@@ -943,7 +968,7 @@ class GeiserCustomerPortalController extends Controller
             ->first();
     }
 
-    private function account(Request $request): CustomerPortalAccount
+    protected function account(Request $request): CustomerPortalAccount
     {
         return CustomerPortalAccount::query()
             ->whereKey((int) $request->session()->get(static::SESSION_KEY))
@@ -1009,7 +1034,7 @@ class GeiserCustomerPortalController extends Controller
 
     private function customerVisibleStatus(Ticket $ticket): string
     {
-        // intern erledigt ist für Kunden nicht sichtbar → bleibt "in Bearbeitung"
+        // intern erledigt ist fÃ¼r Kunden nicht sichtbar â†’ bleibt "in Bearbeitung"
         if ($ticket->status === Ticket::STATUS_INTERNALLY_DONE) {
             return 'in Bearbeitung';
         }

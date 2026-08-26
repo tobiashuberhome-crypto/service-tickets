@@ -1,4 +1,4 @@
-﻿@extends('layouts.school-portal')
+@extends('layouts.school-portal')
 
 @section('content')
     <div class="page-header">

@@ -4,9 +4,10 @@
     <div class="page-header">
         <div>
             <h1>Meine Tickets</h1>
-            <p class="muted">{{ $account->company_name }} @if ($account->dolibarr_customer_code) · Kundennummer {{ $account->dolibarr_customer_code }} @endif · Dolibarr-ID {{ $account->dolibarr_thirdparty_id }}</p>
+            <p class="muted">{{ $account->company_name }} @if ($account->dolibarr_customer_code)  -  Kundennummer {{ $account->dolibarr_customer_code }} @endif  -  Dolibarr-ID {{ $account->dolibarr_thirdparty_id }}</p>
         </div>
         <div class="button-row">
+			<a href="{{ route('cibena-portal.monthly-invoices') }}" class="btn secondary">Monatsrechnungen</a>
             <a class="btn secondary" href="{{ route('cibena-portal.history') }}">Historie suchen</a>
             <a class="btn" href="{{ route('cibena-portal.tickets.create') }}">Neues Ticket erfassen</a>
         </div>
@@ -59,6 +60,9 @@
                                 @if ($ticket->machine_returned)
                                     <span class="badge" style="background:#16a34a; color:#fff;">✓ Ausgegeben</span>
                                 @endif
+                                @foreach (($ticket->monthlyInvoiceLabelsAttribute ?? []) as $label)
+    								<span class="badge" style="background:#7c3aed; color:#fff; font-size:.75em;">💰 {{ $label }}</span>
+								@endforeach
                             </td>
                             <td>{{ $customerStatusLabels[$ticket->id] ?? $ticket->statusLabel() }}</td>
                             <td>{{ $ticket->customerMachineProfile?->serial_number ?: $ticket->customerMachine?->serial_number ?: '-' }}</td>
@@ -78,7 +82,7 @@
             <div class="page-header" style="margin-bottom: 1rem;">
                 <div>
                     <h2>Tickets nach Monat</h2>
-                    <p class="muted">Übersicht der Tickets gruppiert nach Annahme-/Erstellungsmonat.</p>
+                    <p class="muted">Ãœbersicht der Tickets gruppiert nach Annahme-/Erstellungsmonat.</p>
                 </div>
                 <div class="button-row">
                     <form id="ticket-selection-form" method="post" action="{{ route('cibena-portal.monthly-invoice') }}">
@@ -115,6 +119,9 @@
                                         @if ($ticket->machine_returned)
                                             <span class="badge" style="background:#16a34a; color:#fff;">✓ Ausgegeben</span>
                                         @endif
+                                        @foreach (($ticket->monthlyInvoiceLabelsAttribute ?? []) as $label)
+    										<span class="badge" style="background:#7c3aed; color:#fff; font-size:.75em;">💰 {{ $label }}</span>
+										@endforeach
                                     </td>
                                     <td>{{ $customerStatusLabels[$ticket->id] ?? $ticket->statusLabel() }}</td>
                                     <td>{{ $ticket->customerMachineProfile?->serial_number ?: $ticket->customerMachine?->serial_number ?: '-' }}</td>

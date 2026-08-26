@@ -14,6 +14,7 @@
         <nav class="nav">
             <a href="{{ route('tickets.index') }}" @class(['active' => request()->routeIs('tickets.*')])>Tickets</a>
             <a href="{{ route('customer-portal-requests.index') }}" @class(['active' => request()->routeIs('customer-portal-requests.*')])>Kundenanfragen</a>
+            <a href="{{ route('monthly-invoices.index') }}" @class(['active' => request()->routeIs('monthly-invoices.*')])>Monatsrechnungen</a>
             <a href="{{ route('spare-parts.index') }}" @class(['active' => request()->routeIs('spare-parts.*')])>Ersatzteile</a>
             <a href="{{ route('spare-part-categories.index') }}" @class(['active' => request()->routeIs('spare-part-categories.*')])>Kategorien</a>
             <a href="{{ route('warehouse.index') }}" @class(['active' => request()->routeIs('warehouse.*')])>Lagerverwaltung</a>
@@ -22,6 +23,7 @@
             <a href="{{ route('service-defaults.index') }}" @class(['active' => request()->routeIs('service-defaults.*')])>Service</a>
             <a href="{{ route('portal-accounts.index') }}" @class(['active' => request()->routeIs('portal-accounts.*')])>Portale</a>
             <a href="{{ route('interne-tickets.index') }}" @class(['active' => request()->routeIs('interne-tickets.*')])>Intern</a>
+            <a href="{{ route('trainings-app.index') }}" @class(['active' => request()->routeIs('trainings-app.*')])>Trainings-App</a>
             <form method="post" action="{{ route('admin.logout') }}" style="display:inline;">
                 @csrf
                 <button type="submit" class="btn secondary" style="margin-left: 10px;">Abmelden</button>

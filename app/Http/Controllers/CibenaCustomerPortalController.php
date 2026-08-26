@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\CustomerPortalAccount;
+use App\Services\Tickets\GeiserInvoiceCalculator;
+use Illuminate\Http\Request;
 
 class CibenaCustomerPortalController extends GeiserCustomerPortalController
 {
@@ -24,4 +26,74 @@ class CibenaCustomerPortalController extends GeiserCustomerPortalController
             (int) $account->dolibarr_thirdparty_id,
         ]));
     }
+
+    public function monthlyInvoices(Request $request): \Illuminate\View\View
+    {
+        $account = $this->account($request);
+
+        $invoices = \App\Models\MonthlyInvoice::query()
+            ->where('portal_scope', static::PORTAL_SCOPE)
+            ->where('dolibarr_customer_id', $account->dolibarr_thirdparty_id)
+            ->with('tickets')
+            ->orderByDesc('invoice_year')
+            ->orderByDesc('invoice_month')
+            ->orderByDesc('sequence_number')
+            ->paginate(20);
+
+        return view('customer-portal-cibena.monthly-invoices', [
+            'account' => $account,
+            'invoices' => $invoices,
+        ]);
+    }
+	public function downloadMonthlyInvoice(Request $request, \App\Models\MonthlyInvoice $monthlyInvoice)
+{
+    $account = $this->account($request);
+
+    abort_unless(
+        $monthlyInvoice->portal_scope === static::PORTAL_SCOPE
+        && (int) $monthlyInvoice->dolibarr_customer_id === (int) $account->dolibarr_thirdparty_id,
+        403
+    );
+
+    $tickets = $monthlyInvoice->tickets()
+        ->with(['customerMachine', 'customerMachineProfile', 'parts', 'serviceLines'])
+        ->orderBy('acceptance_date')
+        ->orderBy('ticket_number')
+        ->get();
+
+    $invoiceCalculator = app(GeiserInvoiceCalculator::class);
+
+    $invoiceSummaryByTicket = $tickets
+        ->mapWithKeys(fn (\App\Models\Ticket $ticket): array => [
+            (string) $ticket->id => $invoiceCalculator->summarize($ticket),
+        ])
+        ->all();
+
+    $monthlyTotalGross = round(
+        (float) collect($invoiceSummaryByTicket)->sum(fn (array $summary): float => (float) ($summary['totalGross'] ?? 0)),
+        2
+    );
+
+    $monthLabel = $monthlyInvoice->invoice_label;
+
+    $payload = [
+        'tickets' => $tickets,
+        'createdAt' => $monthlyInvoice->generated_at ?? now(),
+        'invoiceSummaryByTicket' => $invoiceSummaryByTicket,
+        'monthLabel' => $monthLabel,
+        'monthlyTotalGross' => $monthlyTotalGross,
+        'monthlyInvoice' => $monthlyInvoice,
+    ];
+
+    if (! class_exists(\Barryvdh\DomPDF\Facade\Pdf::class)) {
+        return response()->view($this->portalView('monthly-invoice'), $payload);
+    }
+
+    $fileName = 'monatsrechnung-'.$monthlyInvoice->month_key.'-'.$monthlyInvoice->sequence_number.'.pdf';
+
+    $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView($this->portalView('monthly-invoice'), $payload)
+        ->setPaper('a4', 'portrait');
+
+    return $pdf->download($fileName);
+	}
 }

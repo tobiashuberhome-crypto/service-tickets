@@ -183,6 +183,7 @@ class TicketController extends Controller
 
     public function show(Request $request, Ticket $ticket, DolibarrClient $dolibarr, GeiserInvoiceCalculator $invoiceCalculator): View
     {
+        $ticket->load(['messages.attachments']);
         $ticket->load(['customerMachine', 'customerMachineProfile', 'parts', 'serviceLines', 'customerPortalAccount', 'messages.attachments']);
 
         $partsMode = $request->query('parts');
@@ -519,25 +520,65 @@ class TicketController extends Controller
             2
         );
 
+        $hoursByTicket = collect($invoiceSummaryByTicket)
+            ->map(fn (array $summary): float => round(
+                (float) collect($summary['invoiceLines'])->where('type', 'Leistung')->sum('quantity'),
+                2
+            ))
+            ->all();
+        $monthlyTotalHours = round((float) array_sum($hoursByTicket), 2);
+
         $monthDate = $tickets->first()->acceptance_date ?? $tickets->first()->created_at ?? now();
         $monthLabel = $monthDate->copy()->locale('de')->translatedFormat('F Y');
         $fileName = 'monatsrechnung-'.$monthDate->copy()->format('Y-m').'.pdf';
+        $hoursFileName = 'stundennachweis-'.$monthDate->copy()->format('Y-m').'.pdf';
 
-        $payload = [
+        $letterhead = [
+            'sender' => config('geiser_invoice.sender', []),
+            'bank' => config('geiser_invoice.bank', []),
+            'footerNote' => (string) config('geiser_invoice.footer_note', ''),
+        ];
+
+        $payload = array_merge($letterhead, [
             'tickets' => $tickets,
             'createdAt' => now(),
             'invoiceSummaryByTicket' => $invoiceSummaryByTicket,
             'monthLabel' => $monthLabel,
             'monthlyTotalGross' => $monthlyTotalGross,
-        ];
+        ]);
 
         if (! class_exists(Pdf::class)) {
             return response()->view('tickets.monthly-invoice', $payload);
         }
 
-        $pdf = Pdf::loadView('tickets.monthly-invoice', $payload)->setPaper('a4', 'portrait');
+        $invoicePdfBinary = Pdf::loadView('tickets.monthly-invoice', $payload)->setPaper('a4', 'portrait')->output();
 
-        return $pdf->download($fileName);
+        if (! class_exists(\ZipArchive::class)) {
+            return response($invoicePdfBinary, 200, [
+                'Content-Type' => 'application/pdf',
+                'Content-Disposition' => 'attachment; filename="'.$fileName.'"',
+            ]);
+        }
+
+        $hoursPayload = array_merge($letterhead, [
+            'tickets' => $tickets,
+            'createdAt' => now(),
+            'hoursByTicket' => $hoursByTicket,
+            'monthLabel' => $monthLabel,
+            'monthlyTotalHours' => $monthlyTotalHours,
+        ]);
+        $hoursPdfBinary = Pdf::loadView('tickets.monthly-invoice-hours', $hoursPayload)->setPaper('a4', 'portrait')->output();
+
+        $zipPath = tempnam(sys_get_temp_dir(), 'monatsrechnung_').'.zip';
+        $zip = new \ZipArchive();
+        $zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE);
+        $zip->addFromString($fileName, $invoicePdfBinary);
+        $zip->addFromString($hoursFileName, $hoursPdfBinary);
+        $zip->close();
+
+        $zipFileName = 'monatsrechnung-'.$monthDate->copy()->format('Y-m').'.zip';
+
+        return response()->download($zipPath, $zipFileName)->deleteFileAfterSend(true);
     }
 
     public function generateGeiserInvoice(Request $request, Ticket $ticket, DolibarrClient $dolibarr, GeiserInvoiceCalculator $invoiceCalculator)

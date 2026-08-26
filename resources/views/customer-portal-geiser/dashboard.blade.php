@@ -1,14 +1,14 @@
-@extends('layouts.customer-portal-geiser')
+@extends('layouts.customer-portal-cibena')
 
 @section('content')
     <div class="page-header">
         <div>
             <h1>Meine Tickets</h1>
-            <p class="muted">{{ $account->company_name }} @if ($account->dolibarr_customer_code) · Kundennummer {{ $account->dolibarr_customer_code }} @endif · Dolibarr-ID {{ $account->dolibarr_thirdparty_id }}</p>
+            <p class="muted">{{ $account->company_name }} @if ($account->dolibarr_customer_code)  -  Kundennummer {{ $account->dolibarr_customer_code }} @endif  -  Dolibarr-ID {{ $account->dolibarr_thirdparty_id }}</p>
         </div>
         <div class="button-row">
-            <a class="btn secondary" href="{{ route('geiser-portal.history') }}">Historie suchen</a>
-            <a class="btn" href="{{ route('geiser-portal.tickets.create') }}">Neues Ticket erfassen</a>
+            <a class="btn secondary" href="{{ route('cibena-portal.history') }}">Historie suchen</a>
+            <a class="btn" href="{{ route('cibena-portal.tickets.create') }}">Neues Ticket erfassen</a>
         </div>
     </div>
 
@@ -25,7 +25,7 @@
         </div>
     </div>
 
-    <form class="panel panel-body" method="get" action="{{ route('geiser-portal.dashboard') }}">
+    <form class="panel panel-body" method="get" action="{{ route('cibena-portal.dashboard') }}">
         <label class="check-row">
             <input type="checkbox" name="hide_returned" value="1" @checked($hideReturned) onchange="this.form.submit()">
             Ausgegebene Maschinen ausblenden
@@ -34,7 +34,7 @@
 
     <div class="panel panel-body">
         @if ($tickets->isEmpty())
-            <p class="muted">Es wurden noch keine Tickets ueber das Il Coccolino-Serviceportal erstellt.</p>
+            <p class="muted">Es wurden noch keine Tickets ueber das Cibena-Serviceportal erstellt.</p>
         @else
             <div class="table-wrap">
                 <table>
@@ -52,13 +52,16 @@
                     @foreach ($tickets as $ticket)
                         <tr>
                             <td>
-                                <a href="{{ route('geiser-portal.tickets.show', $ticket) }}">{{ $ticket->ticket_number }}</a>
+                                <a href="{{ route('cibena-portal.tickets.show', $ticket) }}">{{ $ticket->ticket_number }}</a>
                                 @if (!$ticket->created_via_customer_portal)
                                     <span class="badge bg-info">vom Techniker erstellt</span>
                                 @endif
                                 @if ($ticket->machine_returned)
                                     <span class="badge" style="background:#16a34a; color:#fff;">✓ Ausgegeben</span>
                                 @endif
+                                @foreach ($ticket->monthlyInvoiceLabelsAttribute as $label)
+                                    <span class="badge" style="background:#7c3aed; color:#fff; font-size:.75em;">ðŸ’° {{ $label }}</span>
+                                @endforeach
                             </td>
                             <td>{{ $customerStatusLabels[$ticket->id] ?? $ticket->statusLabel() }}</td>
                             <td>{{ $ticket->customerMachineProfile?->serial_number ?: $ticket->customerMachine?->serial_number ?: '-' }}</td>
@@ -73,61 +76,4 @@
         @endif
     </div>
 
-    @if ($tickets->isNotEmpty())
-        <div class="panel panel-body" style="margin-top: 2rem;">
-            <div class="page-header" style="margin-bottom: 1rem;">
-                <div>
-                    <h2>Tickets nach Monat</h2>
-                    <p class="muted">Übersicht der Tickets gruppiert nach Annahme-/Erstellungsmonat.</p>
-                </div>
-                <div class="button-row">
-                    <form id="ticket-selection-form" method="post" action="{{ route('geiser-portal.monthly-invoice') }}">
-                        @csrf
-                        <button class="btn" type="submit">Monatsrechnung erstellen</button>
-                    </form>
-                </div>
-            </div>
-
-            @foreach ($monthGroups as $month)
-                <div style="margin-bottom: 1.5rem;">
-                    <h3 style="margin: 0 0 .75rem;">{{ $month['label'] }}</h3>
-                    <div class="table-wrap">
-                        <table>
-                            <thead>
-                            <tr>
-                                <th style="width: 30px;"></th>
-                                <th>Ticket</th>
-                                <th>Status</th>
-                                <th>Seriennummer</th>
-                                <th>Maschine</th>
-                                <th>Ansprechpartner</th>
-                                <th>Erstellt</th>
-                            </tr>
-                            </thead>
-                            <tbody>
-                            @foreach ($month['tickets'] as $ticket)
-                                <tr>
-                                    <td>
-                                        <input type="checkbox" name="ticket_ids[]" value="{{ $ticket->id }}" form="ticket-selection-form">
-                                    </td>
-                                    <td>
-                                        <a href="{{ route('geiser-portal.tickets.show', $ticket) }}">{{ $ticket->ticket_number }}</a>
-                                        @if ($ticket->machine_returned)
-                                            <span class="badge" style="background:#16a34a; color:#fff;">✓ Ausgegeben</span>
-                                        @endif
-                                    </td>
-                                    <td>{{ $customerStatusLabels[$ticket->id] ?? $ticket->statusLabel() }}</td>
-                                    <td>{{ $ticket->customerMachineProfile?->serial_number ?: $ticket->customerMachine?->serial_number ?: '-' }}</td>
-                                    <td>{{ $ticket->customerMachine?->displayName() }}</td>
-                                    <td>{{ $ticket->customerMachineProfile?->contact_name ?: $ticket->customer_contact_name_snapshot ?: '-' }}</td>
-                                    <td>{{ $ticket->created_at?->format('d.m.Y H:i') }}</td>
-                                </tr>
-                            @endforeach
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            @endforeach
-        </div>
-    @endif
 @endsection

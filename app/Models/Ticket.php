@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
@@ -113,6 +114,23 @@ class Ticket extends Model
     public function messages(): HasMany
     {
         return $this->hasMany(TicketMessage::class)->orderBy('created_at');
+    }
+
+    public function monthlyInvoices(): BelongsToMany
+    {
+        return $this->belongsToMany(MonthlyInvoice::class, 'monthly_invoice_ticket')
+            ->withTimestamps();
+    }
+
+    public function getMonthlyInvoiceLabelsAttribute(): array
+    {
+        return $this->monthlyInvoices()
+            ->orderBy('invoice_year', 'desc')
+            ->orderBy('invoice_month', 'desc')
+            ->orderBy('sequence_number', 'desc')
+            ->get()
+            ->map(fn (MonthlyInvoice $invoice) => $invoice->invoice_label)
+            ->toArray();
     }
 
     public function statusLabel(): string

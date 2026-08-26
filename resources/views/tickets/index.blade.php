@@ -73,9 +73,9 @@
 
     <div id="ticket-board" class="ticket-board" data-reorder-url="{{ route('tickets.reorder') }}">
         {{-- Eingangskacheln --}}
-        <section class="ticket-week panel" data-week-start="">
+        <section class="ticket-week panel" data-week-start="" data-collapse-key="schul-portal">
             <div class="ticket-week-head">
-                <h2>Schul-Portal</h2>
+                <h2><span class="ticket-week-toggle">▾</span> Schul-Portal</h2>
                 <span class="muted">{{ $schoolPortalIncoming->count() }} Ticket(s)</span>
             </div>
             <div class="ticket-lane" data-week-start="">
@@ -85,9 +85,9 @@
             </div>
         </section>
 
-        <section class="ticket-week panel" data-week-start="">
+        <section class="ticket-week panel" data-week-start="" data-collapse-key="easy-appointments">
             <div class="ticket-week-head">
-                <h2>EasyAppointments</h2>
+                <h2><span class="ticket-week-toggle">▾</span> EasyAppointments</h2>
                 <span class="muted">{{ $easyAppointmentsIncoming->count() }} Ticket(s)</span>
             </div>
             <div class="ticket-lane" data-week-start="">
@@ -103,9 +103,9 @@
                 $ticketsForWeek = $weekGroups[$week['key']]['tickets'] ?? collect();
                 $renderedWeekKeys->push($week['key']);
             @endphp
-            <section class="ticket-week panel" data-week-start="{{ $week['key'] }}">
+            <section class="ticket-week panel" data-week-start="{{ $week['key'] }}" data-collapse-key="week-{{ $week['key'] }}">
                 <div class="ticket-week-head">
-                    <h2>{{ $week['label'] }}</h2>
+                    <h2><span class="ticket-week-toggle">▾</span> {{ $week['label'] }}</h2>
                     <span class="muted">{{ $ticketsForWeek->count() }} Ticket(s)</span>
                 </div>
                 <div class="ticket-lane" data-week-start="{{ $week['key'] }}">
@@ -119,9 +119,9 @@
         {{-- Weitere vorhandene Wochen mit Tickets anzeigen --}}
         @foreach ($weekGroups as $week)
             @continue($renderedWeekKeys->contains($week['key']))
-            <section class="ticket-week panel" data-week-start="{{ $week['key'] }}">
+            <section class="ticket-week panel" data-week-start="{{ $week['key'] }}" data-collapse-key="week-{{ $week['key'] }}">
                 <div class="ticket-week-head">
-                    <h2>{{ $week['label'] }}</h2>
+                    <h2><span class="ticket-week-toggle">▾</span> {{ $week['label'] }}</h2>
                     <span class="muted">{{ $week['tickets']->count() }} Ticket(s)</span>
                 </div>
                 <div class="ticket-lane" data-week-start="{{ $week['key'] }}">
@@ -132,9 +132,9 @@
             </section>
         @endforeach
 
-        <section class="ticket-week panel" data-week-start="">
+        <section class="ticket-week panel" data-week-start="" data-collapse-key="ohne-frist">
             <div class="ticket-week-head">
-                <h2>Ohne Frist</h2>
+                <h2><span class="ticket-week-toggle">▾</span> Ohne Frist</h2>
                 <span class="muted">{{ $withoutTargetDate->count() }} Ticket(s)</span>
             </div>
             <div class="ticket-lane" data-week-start="">
@@ -242,8 +242,53 @@
         });
     }
 
+    const collapseStorageKey = 'ticketBoard.collapsedSections';
+
+    function loadCollapsedKeys() {
+        try {
+            return new Set(JSON.parse(localStorage.getItem(collapseStorageKey) || '[]'));
+        } catch (error) {
+            return new Set();
+        }
+    }
+
+    function saveCollapsedKeys(keys) {
+        try {
+            localStorage.setItem(collapseStorageKey, JSON.stringify([...keys]));
+        } catch (error) {
+            // localStorage nicht verfuegbar - Collapse-Status wird dann nicht gemerkt.
+        }
+    }
+
+    function bindWeekSection(section) {
+        if (section.dataset.boundCollapse === '1') return;
+        section.dataset.boundCollapse = '1';
+
+        const head = section.querySelector('.ticket-week-head');
+        const key = section.dataset.collapseKey;
+        if (!head || !key) return;
+
+        if (loadCollapsedKeys().has(key)) {
+            section.classList.add('is-collapsed');
+        }
+
+        head.addEventListener('click', () => {
+            const collapsedKeys = loadCollapsedKeys();
+            const isCollapsed = section.classList.toggle('is-collapsed');
+
+            if (isCollapsed) {
+                collapsedKeys.add(key);
+            } else {
+                collapsedKeys.delete(key);
+            }
+
+            saveCollapsedKeys(collapsedKeys);
+        });
+    }
+
     board.querySelectorAll('.ticket-card').forEach(bindCard);
     board.querySelectorAll('.ticket-lane').forEach(bindLane);
+    board.querySelectorAll('.ticket-week').forEach(bindWeekSection);
 
     function getCardAfter(lane, x) {
         return [...lane.querySelectorAll('.ticket-card:not(.dragging)')]
@@ -329,10 +374,11 @@
         const section = document.createElement('section');
         section.className = 'ticket-week panel';
         section.dataset.weekStart = nextKey;
+        section.dataset.collapseKey = `week-${nextKey}`;
 
         section.innerHTML = `
             <div class="ticket-week-head">
-                <h2>${weekLabel(nextKey)}</h2>
+                <h2><span class="ticket-week-toggle">▾</span> ${weekLabel(nextKey)}</h2>
                 <span class="muted">0 Ticket(s)</span>
             </div>
             <div class="ticket-lane" data-week-start="${nextKey}"></div>
@@ -341,6 +387,7 @@
         board.appendChild(section);
         const lane = section.querySelector('.ticket-lane');
         bindLane(lane);
+        bindWeekSection(section);
     });
 })();
 
