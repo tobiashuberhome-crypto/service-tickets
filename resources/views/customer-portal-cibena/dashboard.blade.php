@@ -60,7 +60,7 @@
                                 @if ($ticket->machine_returned)
                                     <span class="badge" style="background:#16a34a; color:#fff;">✓ Ausgegeben</span>
                                 @endif
-                                @foreach (($ticket->monthlyInvoiceLabelsAttribute ?? []) as $label)
+                                @foreach ($ticket->monthlyInvoiceLabels as $label)
     								<span class="badge" style="background:#7c3aed; color:#fff; font-size:.75em;">💰 {{ $label }}</span>
 								@endforeach
                             </td>
@@ -119,7 +119,7 @@
                                         @if ($ticket->machine_returned)
                                             <span class="badge" style="background:#16a34a; color:#fff;">✓ Ausgegeben</span>
                                         @endif
-                                        @foreach (($ticket->monthlyInvoiceLabelsAttribute ?? []) as $label)
+                                        @foreach ($ticket->monthlyInvoiceLabels as $label)
     										<span class="badge" style="background:#7c3aed; color:#fff; font-size:.75em;">💰 {{ $label }}</span>
 										@endforeach
                                     </td>
