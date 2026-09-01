@@ -124,13 +124,13 @@ class Ticket extends Model
 
     public function getMonthlyInvoiceLabelsAttribute(): array
     {
-        return $this->monthlyInvoices()
+        $latestInvoice = $this->monthlyInvoices()
             ->orderBy('invoice_year', 'desc')
             ->orderBy('invoice_month', 'desc')
             ->orderBy('sequence_number', 'desc')
-            ->get()
-            ->map(fn (MonthlyInvoice $invoice) => $invoice->invoice_label)
-            ->toArray();
+            ->first();
+
+        return $latestInvoice ? [$latestInvoice->invoice_label] : [];
     }
 
     public function statusLabel(): string

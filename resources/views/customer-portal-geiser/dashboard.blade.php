@@ -60,7 +60,7 @@
                                     <span class="badge" style="background:#16a34a; color:#fff;">✓ Ausgegeben</span>
                                 @endif
                                 @foreach ($ticket->monthlyInvoiceLabels as $label)
-                                    <span class="badge" style="background:#7c3aed; color:#fff; font-size:.75em;">ðŸ’° {{ $label }}</span>
+                                    <span class="badge" style="background:#7c3aed; color:#fff; font-size:.75em;">💰 {{ $label }}</span>
                                 @endforeach
                             </td>
                             <td>{{ $customerStatusLabels[$ticket->id] ?? $ticket->statusLabel() }}</td>
