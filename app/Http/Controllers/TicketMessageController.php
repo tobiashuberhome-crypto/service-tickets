@@ -57,10 +57,37 @@ class TicketMessageController extends Controller
         return back()->with('status', 'Nachricht wurde gespeichert und an den Kunden gesendet.');
     }
 
-    public function storeGeiser(Request $request, Ticket $ticket): RedirectResponse
+    public function storeGeiser(Request $request, Ticket $ticket, GeiserCustomerPortalController $portal): RedirectResponse
     {
-        $account = $this->requireGeiserAccount($request);
-        if (! $this->canGeiserViewTicket($account, $ticket)) {
+        return $this->storeForPortal($request, $ticket, $portal);
+    }
+
+    public function storeCibena(Request $request, Ticket $ticket, CibenaCustomerPortalController $portal): RedirectResponse
+    {
+        return $this->storeForPortal($request, $ticket, $portal);
+    }
+
+    public function downloadAdminAttachment(Ticket $ticket, TicketMessage $message, TicketMessageAttachment $attachment): StreamedResponse
+    {
+        $this->assertAttachmentOwnership($ticket, $message, $attachment);
+
+        return Storage::disk($attachment->disk)->download($attachment->path, $attachment->original_name);
+    }
+
+    public function downloadGeiserAttachment(Request $request, Ticket $ticket, TicketMessage $message, TicketMessageAttachment $attachment, GeiserCustomerPortalController $portal): StreamedResponse
+    {
+        return $this->downloadForPortal($request, $ticket, $message, $attachment, $portal);
+    }
+
+    public function downloadCibenaAttachment(Request $request, Ticket $ticket, TicketMessage $message, TicketMessageAttachment $attachment, CibenaCustomerPortalController $portal): StreamedResponse
+    {
+        return $this->downloadForPortal($request, $ticket, $message, $attachment, $portal);
+    }
+
+    private function storeForPortal(Request $request, Ticket $ticket, GeiserCustomerPortalController $portal): RedirectResponse
+    {
+        $account = $portal->account($request);
+        if (! $portal->canViewTicket($account, $ticket)) {
             abort(403);
         }
 
@@ -80,17 +107,10 @@ class TicketMessageController extends Controller
         return back()->with('status', 'Antwort wurde gespeichert.');
     }
 
-    public function downloadAdminAttachment(Ticket $ticket, TicketMessage $message, TicketMessageAttachment $attachment): StreamedResponse
+    private function downloadForPortal(Request $request, Ticket $ticket, TicketMessage $message, TicketMessageAttachment $attachment, GeiserCustomerPortalController $portal): StreamedResponse
     {
-        $this->assertAttachmentOwnership($ticket, $message, $attachment);
-
-        return Storage::disk($attachment->disk)->download($attachment->path, $attachment->original_name);
-    }
-
-    public function downloadGeiserAttachment(Request $request, Ticket $ticket, TicketMessage $message, TicketMessageAttachment $attachment): StreamedResponse
-    {
-        $account = $this->requireGeiserAccount($request);
-        if (! $this->canGeiserViewTicket($account, $ticket)) {
+        $account = $portal->account($request);
+        if (! $portal->canViewTicket($account, $ticket)) {
             abort(403);
         }
         $this->assertAttachmentOwnership($ticket, $message, $attachment);
@@ -168,28 +188,6 @@ class TicketMessageController extends Controller
         }
 
         return false;
-    }
-
-    private function requireGeiserAccount(Request $request): CustomerPortalAccount
-    {
-        return CustomerPortalAccount::query()
-            ->whereKey((int) $request->session()->get('geiser_customer_portal_account_id'))
-            ->where('portal_scope', CustomerPortalAccount::PORTAL_SCOPE_GEISER)
-            ->where('is_active', true)
-            ->firstOrFail();
-    }
-
-    private function canGeiserViewTicket(CustomerPortalAccount $account, Ticket $ticket): bool
-    {
-        if ((int) $ticket->dolibarr_customer_id !== (int) $account->dolibarr_thirdparty_id) {
-            return false;
-        }
-
-        if ($ticket->customer_portal_account_id === null) {
-            return true;
-        }
-
-        return (int) $ticket->customer_portal_account_id === (int) $account->id;
     }
 
     private function assertAttachmentOwnership(Ticket $ticket, TicketMessage $message, TicketMessageAttachment $attachment): void

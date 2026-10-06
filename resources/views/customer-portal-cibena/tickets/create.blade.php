@@ -17,7 +17,7 @@
             <p class="muted">Fotografieren Sie das ausgefuellte Formular. Das Bild wird komprimiert gespeichert und dem Ticket beigefuegt.</p>
 
             {{-- Dieses hidden input wird per JS mit dem komprimierten Bild befuellt und abgesendet --}}
-            <input type="file" name="customer_photo" id="customer_photo_final" accept="image/*" style="display:none">
+            <input type="file" name="customer_photo" id="customer_photo_final" accept="image/*,application/pdf" style="display:none">
 
             <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:center;">
                 <button type="button" id="btn-camera" class="btn secondary" style="font-size:15px;">📷 Kamera oeffnen</button>
@@ -27,11 +27,12 @@
 
             {{-- Diese inputs werden nur zur Auswahl genutzt, aber nicht direkt abgesendet --}}
             <input type="file" id="input-camera" accept="image/*" capture="environment" style="display:none">
-            <input type="file" id="input-file"   accept="image/*" style="display:none">
+            <input type="file" id="input-file"   accept="image/*,application/pdf" style="display:none">
 
             <div id="photo-preview-wrap" style="display:none; margin-top:12px;">
                 <img id="photo-preview" src="" alt="Vorschau"
                      style="max-width:100%; max-height:300px; border-radius:6px; border:1px solid #ddd;">
+                <p id="photo-preview-pdf" class="muted" style="display:none;">📄 PDF ausgewaehlt (keine Bildvorschau verfuegbar)</p>
                 <br>
                 <button type="button" id="btn-remove-photo" class="btn secondary"
                         style="margin-top:8px; font-size:12px;">✕ Foto entfernen</button>
@@ -246,6 +247,7 @@
     const inputFile   = document.getElementById('input-file');
     const finalInput  = document.getElementById('customer_photo_final');
     const preview     = document.getElementById('photo-preview');
+    const previewPdf  = document.getElementById('photo-preview-pdf');
     const previewWrap = document.getElementById('photo-preview-wrap');
     const filename    = document.getElementById('photo-filename');
 
@@ -256,6 +258,8 @@
 
     btnRemove.addEventListener('click', () => {
         preview.src = '';
+        preview.style.display = '';
+        previewPdf.style.display = 'none';
         previewWrap.style.display = 'none';
         filename.textContent = '';
         finalInput.files = new DataTransfer().files;
@@ -264,6 +268,19 @@
 
     function handleFile(file) {
         if (!file) return;
+        if (file.type === 'application/pdf' || /\.pdf$/i.test(file.name)) {
+            const dt = new DataTransfer();
+            dt.items.add(file);
+            finalInput.files = dt.files;
+            preview.style.display = 'none';
+            previewPdf.style.display = 'block';
+            previewWrap.style.display = 'block';
+            filename.textContent = file.name + ' (' + Math.round(file.size / 1024) + ' KB)';
+            setRequiredFields(false);
+            return;
+        }
+        preview.style.display = '';
+        previewPdf.style.display = 'none';
         compressImage(file, 1200, 0.75, (blob, name) => {
             const dt = new DataTransfer();
             dt.items.add(new File([blob], name, { type: 'image/jpeg' }));

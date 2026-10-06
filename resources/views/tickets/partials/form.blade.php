@@ -10,6 +10,15 @@
     $serialNumber = old('serial_number', $machine?->serial_number);
 @endphp
 
+@if ($ticket->customerPortalAccount?->isGeiserPortal())
+    <div class="section" style="border: 2px solid #dc2626; border-radius: 8px;">
+        <label class="check-row">
+            <input type="checkbox" name="priority" value="1" @checked(old('priority', $ticket->priority))>
+            <strong>Hohe Priorität</strong> <small>(wird in den Ticket-Übersichten hervorgehoben)</small>
+        </label>
+    </div>
+@endif
+
 <input type="hidden" id="dolibarr_customer_id" name="dolibarr_customer_id" value="{{ $customerId }}">
 <input type="hidden" id="customer_name_snapshot" name="customer_name_snapshot" value="{{ $customerName }}">
 <input type="hidden" id="dolibarr_machine_product_id" name="dolibarr_machine_product_id" value="{{ $machineProductId }}">
@@ -220,5 +229,9 @@
     <label class="check-row" style="margin-top: 10px;">
         <input type="checkbox" name="machine_returned" value="1" @checked(old('machine_returned', $ticket->machine_returned))>
         Maschine ausgegeben
+    </label>
+    <label class="check-row" style="margin-top: 10px;">
+        <input type="checkbox" name="thss" value="1" @checked(old('thss', $ticket->thss))>
+        THSS <small>(Ticket wird im Cibena-Portal sowie auf Cibena-Lieferscheinen/-Rechnungen nicht angezeigt)</small>
     </label>
 </div>

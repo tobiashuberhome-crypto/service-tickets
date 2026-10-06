@@ -2,7 +2,7 @@
 
 @section('content')
 <div class="page-header">
-    <h1>Interne Tickets</h1>
+    <h1>{{ request()->routeIs('trainings-app.*') ? 'Trainings-App' : 'Interne Tickets' }}</h1>
 </div>
 
 {{-- Filter --}}
@@ -53,7 +53,7 @@
                 <td>
                     <strong>{{ $ticket->titel }}</strong>
                     @if($ticket->beschreibung)
-                        <div style="font-size:.85em; color:#666; margin-top:.2rem;">{{ Str::limit($ticket->beschreibung, 120) }}</div>
+                        <div style="font-size:.85em; color:#666; margin-top:.2rem; white-space:pre-wrap; word-break:break-word;">{!! e($ticket->beschreibung) !!}</div>
                     @endif
                 </td>
                 <td>

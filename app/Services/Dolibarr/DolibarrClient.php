@@ -131,28 +131,32 @@ class DolibarrClient
 
     public function createMachineProduct(array $payload): array
     {
+        // Ohne ausdruecklichen Barcode die Dolibarr-Autovergabe (-1) nutzen: Dolibarr verlangt
+        // einen Barcode (ErrorBarCodeRequired), prueft eine Maschinen-Referenz aber als Barcode
+        // (ErrorBadBarCodeSyntax). Bestehende Maschinen tragen so erzeugte Werte (BC00000152).
         $barcode = trim((string) ($payload['barcode'] ?? ''));
-        if ($barcode === '') {
-            $barcode = trim((string) ($payload['ref'] ?? ''));
-        }
-        if ($barcode === '') {
-            $barcode = 'auto';
-        }
 
-        $id = $this->extractId($this->request('post', '/products', [
+        $product = [
             'ref' => $payload['ref'],
             'label' => $payload['label'] ?? $payload['ref'],
             'type' => 0,
             'status' => 1,
             'status_buy' => 0,
-            'barcode' => $barcode,
-            'barcode_type' => $payload['barcode_type'] ?? null,
-            'fk_barcode_type' => $payload['barcode_type'] ?? null,
-            'barcode_type_code' => $payload['barcode_type_code'] ?? null,
             'array_options' => [
                 'options_hersteller' => $payload['manufacturer'] ?? null,
             ],
-        ]));
+        ];
+
+        if ($barcode !== '') {
+            $product['barcode'] = $barcode;
+            $product['barcode_type'] = $payload['barcode_type'] ?? null;
+            $product['fk_barcode_type'] = $payload['barcode_type'] ?? null;
+            $product['barcode_type_code'] = $payload['barcode_type_code'] ?? null;
+        } else {
+            $product['barcode'] = -1;
+        }
+
+        $id = $this->extractId($this->request('post', '/products', $product));
 
         return $this->getProduct($id);
     }

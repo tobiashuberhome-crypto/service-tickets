@@ -4,7 +4,11 @@
     <div class="page-header">
         <div>
             <h1>Ticket {{ $ticket->ticket_number }}</h1>
-            <p class="muted">Status: <strong>{{ $customerStatusLabel }}</strong></p>
+            <p class="muted">Status: <strong>{{ $customerStatusLabel }}</strong>
+                @if ($ticket->priority)
+                    &nbsp;<span class="badge" style="background:#dc2626; color:#fff;" title="Hohe Priorität">⚑ Hohe Priorität</span>
+                @endif
+            </p>
         </div>
         <div class="button-row">
             <a class="btn secondary" href="{{ route('geiser-portal.tickets.print', $ticket) }}" target="_blank" rel="noopener">Ticket drucken</a>
@@ -75,7 +79,7 @@
                 <div class="section">
                     <div class="section-title"><h3>Foto des Reparaturauftrags</h3></div>
                     <p class="muted">Sie koennen ein bestehendes Foto durch eine neue Aufnahme oder Datei ersetzen.</p>
-                    <input type="file" name="customer_photo" id="customer_photo_final" accept="image/*" style="display:none" form="ticket-edit-form">
+                    <input type="file" name="customer_photo" id="customer_photo_final" accept="image/*,application/pdf" style="display:none" form="ticket-edit-form">
 
                     <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:center;">
                         <button type="button" id="btn-camera" class="btn secondary" style="font-size:15px;">📷 Kamera oeffnen</button>
@@ -84,19 +88,24 @@
                     </div>
 
                     <input type="file" id="input-camera" accept="image/*" capture="environment" style="display:none">
-                    <input type="file" id="input-file" accept="image/*" style="display:none">
+                    <input type="file" id="input-file" accept="image/*,application/pdf" style="display:none">
 
                     @if ($ticket->customer_photo_path)
                         <div style="margin-top:12px;">
-                            <a href="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($ticket->customer_photo_path) }}" target="_blank" rel="noopener">Aktuelles Foto oeffnen</a>
+                            <a href="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($ticket->customer_photo_path) }}" target="_blank" rel="noopener">{{ str_ends_with($ticket->customer_photo_path, '.pdf') ? 'Aktuelles PDF oeffnen' : 'Aktuelles Foto oeffnen' }}</a>
                             <div style="margin-top:8px;">
-                                <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($ticket->customer_photo_path) }}" alt="Aktuelles Ticketfoto" style="max-width:100%; max-height:300px; border-radius:6px; border:1px solid #ddd;">
+                                @if (str_ends_with($ticket->customer_photo_path, '.pdf'))
+                                    <p class="muted">📄 PDF-Dokument (keine Bildvorschau verfuegbar)</p>
+                                @else
+                                    <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($ticket->customer_photo_path) }}" alt="Aktuelles Ticketfoto" style="max-width:100%; max-height:300px; border-radius:6px; border:1px solid #ddd;">
+                                @endif
                             </div>
                         </div>
                     @endif
 
                     <div id="photo-preview-wrap" style="display:none; margin-top:12px;">
                         <img id="photo-preview" src="" alt="Vorschau" style="max-width:100%; max-height:300px; border-radius:6px; border:1px solid #ddd;">
+                        <p id="photo-preview-pdf" class="muted" style="display:none;">📄 PDF ausgewaehlt (keine Bildvorschau verfuegbar)</p>
                         <br>
                         <button type="button" id="btn-remove-photo" class="btn secondary" style="margin-top:8px; font-size:12px;">✕ Neue Fotoauswahl entfernen</button>
                     </div>
@@ -210,6 +219,13 @@
                         <input id="intake_note" name="intake_note" value="{{ old('intake_note', $ticket->customerMachineProfile?->intake_note) }}">
                         @error('intake_note') <span class="error">{{ $message }}</span> @enderror
                     </div>
+                </div>
+
+                <div style="margin-top: 8px; padding: 6px 8px; border: 2px solid #dc2626; border-radius: 8px;">
+                    <label class="check-row">
+                        <input type="checkbox" name="priority" value="1" @checked(old('priority', $ticket->priority)) form="ticket-edit-form">
+                        <strong>Hohe Priorität</strong> <small>(wird in den Ticket-Übersichten hervorgehoben)</small>
+                    </label>
                 </div>
 
                 <div style="margin-top: 8px;">
@@ -545,6 +561,7 @@
     const inputFile   = document.getElementById('input-file');
     const finalInput  = document.getElementById('customer_photo_final');
     const preview     = document.getElementById('photo-preview');
+    const previewPdf  = document.getElementById('photo-preview-pdf');
     const previewWrap = document.getElementById('photo-preview-wrap');
     const filename    = document.getElementById('photo-filename');
     const hasExistingPhoto = {{ $ticket->customer_photo_path ? 'true' : 'false' }};
@@ -554,6 +571,8 @@
     inputFile.addEventListener('change',   e => handleFile(e.target.files[0]));
     btnRemove.addEventListener('click', () => {
         preview.src = '';
+        preview.style.display = '';
+        previewPdf.style.display = 'none';
         previewWrap.style.display = 'none';
         filename.textContent = '';
         const dt = new DataTransfer();
@@ -562,6 +581,19 @@
     });
     function handleFile(file) {
         if (!file) return;
+        if (file.type === 'application/pdf' || /\.pdf$/i.test(file.name)) {
+            const dt = new DataTransfer();
+            dt.items.add(file);
+            finalInput.files = dt.files;
+            preview.style.display = 'none';
+            previewPdf.style.display = 'block';
+            previewWrap.style.display = 'block';
+            filename.textContent = file.name + ' (' + Math.round(file.size/1024) + ' KB)';
+            setRequiredFields(false);
+            return;
+        }
+        preview.style.display = '';
+        previewPdf.style.display = 'none';
         compressImage(file, 1200, 0.75, (blob, name) => {
             const dt = new DataTransfer();
             dt.items.add(new File([blob], name, { type: 'image/jpeg' }));

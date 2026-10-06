@@ -56,4 +56,9 @@ class InternesTicket extends Model
             default         => '',
         };
     }
+
+    public function beschreibungHtml(): string
+    {
+        return nl2br(e($this->beschreibung ?? ''));
+    }
 }

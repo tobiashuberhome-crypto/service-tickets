@@ -3,7 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\CustomerMachine;
+use App\Models\CustomerPortalAccount;
+use App\Models\DeliveryNote;
 use App\Models\MachineDocument;
+use App\Models\MonthlyInvoice;
 use App\Models\SparePart;
 use App\Models\Ticket;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -17,6 +20,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Throwable;
@@ -28,11 +32,30 @@ class TicketController extends Controller
         $status = $request->query('status');
         $search = trim((string) $request->query('q'));
         $hideReturned = $request->boolean('hide_returned');
+        $customerFilter = trim((string) $request->query('customer'));
+
+        $customerOptions = Ticket::query()
+            ->selectRaw('dolibarr_customer_id, MAX(customer_name_snapshot) as label')
+            ->groupBy('dolibarr_customer_id')
+            ->get()
+            ->map(fn ($row) => [
+                'value' => $row->dolibarr_customer_id === null ? 'none' : (string) $row->dolibarr_customer_id,
+                'label' => $row->dolibarr_customer_id === null ? 'Ohne Dolibarr-Kunde' : $row->label,
+            ])
+            ->sortBy('label')
+            ->values();
 
         $tickets = Ticket::query()
-            ->with(['customerMachine', 'customerPortalAccount'])
+            ->with(['customerMachine', 'customerPortalAccount', 'monthlyInvoices', 'deliveryNotes'])
             ->when(array_key_exists($status, Ticket::statusOptions()), fn ($query) => $query->where('status', $status))
             ->when($hideReturned, fn ($query) => $query->where('machine_returned', false))
+            ->when($customerFilter !== '', function ($query) use ($customerFilter): void {
+                if ($customerFilter === 'none') {
+                    $query->whereNull('dolibarr_customer_id');
+                } else {
+                    $query->where('dolibarr_customer_id', (int) $customerFilter);
+                }
+            })
             ->when($search !== '', function ($query) use ($search): void {
                 $query->where(function ($searchQuery) use ($search): void {
                     $searchQuery->where('ticket_number', 'like', '%'.$search.'%')
@@ -124,6 +147,8 @@ class TicketController extends Controller
             'activeStatus' => $status,
             'search' => $search,
             'hideReturned' => $hideReturned,
+            'customerOptions' => $customerOptions,
+            'activeCustomer' => $customerFilter,
         ]);
     }
 
@@ -152,6 +177,8 @@ class TicketController extends Controller
             'cleaning' => $request->boolean('cleaning'),
             'repair_enabled' => $request->boolean('repair_enabled'),
             'spare_part_order_required' => $request->boolean('spare_part_order_required'),
+            'thss' => $request->boolean('thss'),
+            'priority' => $request->boolean('priority'),
             'error_description' => $data['error_description'] ?? null,
             'technician_note' => $data['technician_note'] ?? null,
             'acceptance_date' => $data['acceptance_date'],
@@ -183,7 +210,8 @@ class TicketController extends Controller
 
     public function show(Request $request, Ticket $ticket, DolibarrClient $dolibarr, GeiserInvoiceCalculator $invoiceCalculator): View
     {
-        $ticket->load(['customerMachine', 'customerMachineProfile', 'parts', 'serviceLines', 'customerPortalAccount', 'messages.attachments']);
+        $ticket->load(['messages.attachments']);
+        $ticket->load(['customerMachine', 'customerMachineProfile', 'parts', 'serviceLines', 'customerPortalAccount', 'messages.attachments', 'monthlyInvoices', 'deliveryNotes']);
 
         $partsMode = $request->query('parts');
         $partSearch = trim((string) $request->query('part_search'));
@@ -294,6 +322,8 @@ class TicketController extends Controller
                 'status' => $data['status'],
                 'completed_at' => $isNowDone ? ($ticket->completed_at ?? now()) : null,
                 'machine_returned' => $request->boolean('machine_returned'),
+                'thss' => $request->boolean('thss'),
+                'priority' => $request->boolean('priority'),
                 'sync_status' => Ticket::SYNC_PENDING,
                 'sync_message' => null,
             ])->save();
@@ -313,6 +343,8 @@ class TicketController extends Controller
             'repair_enabled' => $request->boolean('repair_enabled'),
             'spare_part_order_required' => $request->boolean('spare_part_order_required'),
             'machine_returned' => $request->boolean('machine_returned'),
+            'thss' => $request->boolean('thss'),
+            'priority' => $request->boolean('priority'),
             'error_description' => $data['error_description'] ?? null,
             'technician_note' => $data['technician_note'] ?? null,
             'acceptance_date' => $data['acceptance_date'],
@@ -484,16 +516,32 @@ class TicketController extends Controller
             'deliveryTotalGross' => $deliveryTotalGross,
         ];
 
+        $deliveryNote = DeliveryNote::query()->create([
+            'filename' => $fileName,
+            'disk' => 'local',
+            'path' => 'delivery-notes/'.$fileName,
+            'created_by' => $request->session()->get('admin_user_id'),
+        ]);
+        $deliveryNote->tickets()->attach($tickets->pluck('id')->all());
+
         if (! class_exists(Pdf::class)) {
             return response()->view('tickets.delivery-note', $payload);
         }
 
-        $pdf = Pdf::loadView('tickets.delivery-note', $payload)->setPaper('a4', 'portrait');
+        $pdfBinary = Pdf::loadView('tickets.delivery-note', $payload)->setPaper('a4', 'portrait')->output();
+        Storage::disk('local')->put($deliveryNote->path, $pdfBinary);
 
-        return $pdf->download($fileName);
+        return response($pdfBinary, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="'.$fileName.'"',
+        ]);
     }
 
-    public function generateMonthlyInvoice(Request $request, GeiserInvoiceCalculator $invoiceCalculator)
+    /**
+     * Lieferschein-Kopie mit TH Services & Solutions als Absender (Kleinunternehmer gem. §19 UStG).
+     * Summen sind Netto = Brutto, siehe generateThServicesInvoice().
+     */
+    public function generateThServicesDeliveryNote(Request $request, GeiserInvoiceCalculator $invoiceCalculator)
     {
         $data = $request->validate([
             'ticket_ids' => ['required', 'array', 'min:1'],
@@ -501,7 +549,67 @@ class TicketController extends Controller
         ]);
 
         $tickets = Ticket::query()
-            ->with(['customerMachine', 'customerMachineProfile', 'parts', 'serviceLines'])
+            ->with(['customerMachine', 'parts', 'serviceLines'])
+            ->whereIn('id', $data['ticket_ids'])
+            ->orderBy('ticket_number')
+            ->get();
+
+        if ($tickets->isEmpty()) {
+            return back()->with('warning', 'Es wurden keine Tickets für den Lieferschein ausgewählt.');
+        }
+
+        Ticket::query()
+            ->whereIn('id', $tickets->pluck('id')->all())
+            ->update(['status' => Ticket::STATUS_DELIVERED]);
+
+        $invoiceSummaryByTicket = $tickets
+            ->mapWithKeys(fn (Ticket $ticket): array => [(string) $ticket->id => $invoiceCalculator->summarize($ticket)])
+            ->all();
+        $deliveryTotalNet = round(
+            (float) collect($invoiceSummaryByTicket)->sum(fn (array $summary): float => (float) ($summary['totalNet'] ?? 0)),
+            2
+        );
+
+        $fileName = 'th-services-lieferschein-'.now()->format('Ymd-His').'.pdf';
+        $payload = [
+            'tickets' => $tickets,
+            'createdAt' => now(),
+            'invoiceSummaryByTicket' => $invoiceSummaryByTicket,
+            'deliveryTotalNet' => $deliveryTotalNet,
+            'sender' => config('th_services_invoice.sender', []),
+            'vatNote' => (string) config('th_services_invoice.vat_note', ''),
+        ];
+
+        $deliveryNote = DeliveryNote::query()->create([
+            'filename' => $fileName,
+            'disk' => 'local',
+            'path' => 'delivery-notes/'.$fileName,
+            'created_by' => $request->session()->get('admin_user_id'),
+        ]);
+        $deliveryNote->tickets()->attach($tickets->pluck('id')->all());
+
+        if (! class_exists(Pdf::class)) {
+            return response()->view('tickets.th-services-delivery-note', $payload);
+        }
+
+        $pdfBinary = Pdf::loadView('tickets.th-services-delivery-note', $payload)->setPaper('a4', 'portrait')->output();
+        Storage::disk('local')->put($deliveryNote->path, $pdfBinary);
+
+        return response($pdfBinary, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="'.$fileName.'"',
+        ]);
+    }
+
+    public function generateMonthlyInvoice(Request $request, DolibarrClient $dolibarr, GeiserInvoiceCalculator $invoiceCalculator)
+    {
+        $data = $request->validate([
+            'ticket_ids' => ['required', 'array', 'min:1'],
+            'ticket_ids.*' => ['integer', 'exists:tickets,id'],
+        ]);
+
+        $tickets = Ticket::query()
+            ->with(['customerMachine', 'customerMachineProfile', 'customerPortalAccount', 'parts', 'serviceLines'])
             ->whereIn('id', $data['ticket_ids'])
             ->orderBy('acceptance_date')
             ->orderBy('ticket_number')
@@ -511,33 +619,257 @@ class TicketController extends Controller
             return back()->with('warning', 'Es wurden keine Tickets für die Monatsrechnung ausgewählt.');
         }
 
-        $invoiceSummaryByTicket = $tickets
-            ->mapWithKeys(fn (Ticket $ticket): array => [(string) $ticket->id => $invoiceCalculator->summarize($ticket)])
-            ->all();
-        $monthlyTotalGross = round(
-            (float) collect($invoiceSummaryByTicket)->sum(fn (array $summary): float => (float) ($summary['totalGross'] ?? 0)),
-            2
-        );
+        if ($tickets->contains(fn (Ticket $ticket): bool => $ticket->thss)) {
+            return back()->with('warning', 'Die Auswahl enthält Tickets mit dem Kennzeichen THSS. Diese gehören nicht in die reguläre Monatsrechnung - bitte "Monatsrechnung erstellen (THSS)" verwenden.');
+        }
+
+        if ($tickets->pluck('dolibarr_customer_id')->unique()->count() > 1) {
+            return back()->with('warning', 'Eine Monatsrechnung kann nur Tickets desselben Kunden enthalten. Bitte Auswahl auf einen Kunden eingrenzen.');
+        }
+
+        try {
+            $invoiceRecipient = $dolibarr->getCustomer((int) $tickets->first()->dolibarr_customer_id);
+        } catch (Throwable $exception) {
+            Log::warning('Monatsrechnung: Dolibarr-Kunde konnte nicht geladen werden, verwende Ticket-Snapshot.', [
+                'dolibarr_customer_id' => $tickets->first()->dolibarr_customer_id,
+                'error' => $exception->getMessage(),
+            ]);
+            $invoiceRecipient = ['name' => $tickets->first()->customer_name_snapshot];
+        }
+
+        $invoiceSummary = $invoiceCalculator->summarizeMany($tickets);
+
+        $hoursLines = collect($invoiceSummary['invoiceLines'])->where('is_nm_service', true)->values();
+        $monthlyTotalHours = round((float) $hoursLines->sum('quantity'), 2);
 
         $monthDate = $tickets->first()->acceptance_date ?? $tickets->first()->created_at ?? now();
         $monthLabel = $monthDate->copy()->locale('de')->translatedFormat('F Y');
-        $fileName = 'monatsrechnung-'.$monthDate->copy()->format('Y-m').'.pdf';
 
-        $payload = [
+        $portalScopes = $tickets->pluck('customerPortalAccount.portal_scope')->filter()->unique();
+        $portalScope = $portalScopes->count() === 1 ? $portalScopes->first() : CustomerPortalAccount::PORTAL_SCOPE_DEFAULT;
+
+        $sequenceNumber = 1 + (int) (MonthlyInvoice::query()
+            ->where('portal_scope', $portalScope)
+            ->where('dolibarr_customer_id', $tickets->first()->dolibarr_customer_id)
+            ->where('invoice_year', (int) $monthDate->format('Y'))
+            ->where('invoice_month', (int) $monthDate->format('m'))
+            ->max('sequence_number') ?? 0);
+
+        $monthlyInvoice = MonthlyInvoice::query()->create([
+            'portal_scope' => $portalScope,
+            'dolibarr_customer_id' => $tickets->first()->dolibarr_customer_id,
+            'invoice_year' => (int) $monthDate->format('Y'),
+            'invoice_month' => (int) $monthDate->format('m'),
+            'sequence_number' => $sequenceNumber,
+            'generated_at' => now(),
+        ]);
+        $monthlyInvoice->tickets()->attach($tickets->pluck('id')->all());
+
+        $fileName = 'monatsrechnung-'.$monthDate->copy()->format('Y-m').'.pdf';
+        $hoursFileName = 'stundennachweis-'.$monthDate->copy()->format('Y-m').'.pdf';
+        $invoiceNumber = 'MON-'.$monthDate->copy()->format('Ym').'-'.$tickets->first()->dolibarr_customer_id;
+
+        $letterhead = [
+            'sender' => config('geiser_invoice.sender', []),
+            'bank' => config('geiser_invoice.bank', []),
+            'footerNote' => (string) config('geiser_invoice.footer_note', ''),
+            'invoiceRecipient' => $invoiceRecipient,
+            'invoiceNumber' => $invoiceNumber,
+        ];
+
+        $payload = array_merge($letterhead, $invoiceSummary, [
             'tickets' => $tickets,
             'createdAt' => now(),
-            'invoiceSummaryByTicket' => $invoiceSummaryByTicket,
             'monthLabel' => $monthLabel,
-            'monthlyTotalGross' => $monthlyTotalGross,
-        ];
+        ]);
 
         if (! class_exists(Pdf::class)) {
             return response()->view('tickets.monthly-invoice', $payload);
         }
 
-        $pdf = Pdf::loadView('tickets.monthly-invoice', $payload)->setPaper('a4', 'portrait');
+        $invoicePdfBinary = Pdf::loadView('tickets.monthly-invoice', $payload)->setPaper('a4', 'portrait')->output();
 
-        return $pdf->download($fileName);
+        if (! class_exists(\ZipArchive::class)) {
+            return response($invoicePdfBinary, 200, [
+                'Content-Type' => 'application/pdf',
+                'Content-Disposition' => 'attachment; filename="'.$fileName.'"',
+            ]);
+        }
+
+        $hoursPayload = array_merge($letterhead, [
+            'tickets' => $tickets,
+            'createdAt' => now(),
+            'hoursLines' => $hoursLines,
+            'monthLabel' => $monthLabel,
+            'monthlyTotalHours' => $monthlyTotalHours,
+        ]);
+        $hoursPdfBinary = Pdf::loadView('tickets.monthly-invoice-hours', $hoursPayload)->setPaper('a4', 'portrait')->output();
+
+        $zipPath = tempnam(sys_get_temp_dir(), 'monatsrechnung_').'.zip';
+        $zip = new \ZipArchive();
+        $zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE);
+        $zip->addFromString($fileName, $invoicePdfBinary);
+        $zip->addFromString($hoursFileName, $hoursPdfBinary);
+        $zip->close();
+
+        $zipFileName = 'monatsrechnung-'.$monthDate->copy()->format('Y-m').'.zip';
+
+        return response()->download($zipPath, $zipFileName)->deleteFileAfterSend(true);
+    }
+
+    /**
+     * Monatsrechnung (inkl. Stundennachweis) mit TH Services & Solutions als Rechnungssteller
+     * (Kleinunternehmer gem. §19 UStG, Netto = Brutto). Nur im Admin verfuegbar und ausschliesslich
+     * fuer Tickets mit Kennzeichen THSS; diese Tickets erscheinen in keinem externen Portal.
+     */
+    public function generateThServicesMonthlyInvoice(Request $request, DolibarrClient $dolibarr, GeiserInvoiceCalculator $invoiceCalculator)
+    {
+        $data = $request->validate([
+            'ticket_ids' => ['required', 'array', 'min:1'],
+            'ticket_ids.*' => ['integer', 'exists:tickets,id'],
+        ]);
+
+        $tickets = Ticket::query()
+            ->with(['customerMachine', 'customerMachineProfile', 'customerPortalAccount', 'parts', 'serviceLines'])
+            ->whereIn('id', $data['ticket_ids'])
+            ->orderBy('acceptance_date')
+            ->orderBy('ticket_number')
+            ->get();
+
+        if ($tickets->isEmpty()) {
+            return back()->with('warning', 'Es wurden keine Tickets für die Monatsrechnung THSS ausgewählt.');
+        }
+
+        if ($tickets->contains(fn (Ticket $ticket): bool => ! $ticket->thss)) {
+            return back()->with('warning', 'Die Monatsrechnung THSS kann nur Tickets mit dem Kennzeichen THSS enthalten. Bitte Auswahl anpassen.');
+        }
+
+        if ($tickets->pluck('dolibarr_customer_id')->unique()->count() > 1) {
+            return back()->with('warning', 'Eine Monatsrechnung kann nur Tickets desselben Kunden enthalten. Bitte Auswahl auf einen Kunden eingrenzen.');
+        }
+
+        $customerId = (int) $tickets->first()->dolibarr_customer_id;
+
+        try {
+            $invoiceRecipient = $dolibarr->getCustomer($customerId);
+        } catch (Throwable $exception) {
+            Log::warning('Monatsrechnung THSS: Dolibarr-Kunde konnte nicht geladen werden, verwende Ticket-Snapshot.', [
+                'dolibarr_customer_id' => $customerId,
+                'error' => $exception->getMessage(),
+            ]);
+            $invoiceRecipient = ['name' => $tickets->first()->customer_name_snapshot];
+        }
+
+        $invoiceSummary = $invoiceCalculator->summarizeMany($tickets);
+        $invoiceLines = collect($invoiceSummary['invoiceLines']);
+
+        // Kleinunternehmer: Netto = Brutto, je Ticket die Summe der Positionen nach Rabatt.
+        $thTicketTotals = collect($invoiceSummary['ticketTotals'])
+            ->map(function (array $ticketTotal) use ($invoiceLines): array {
+                $ticketTotal['net_total'] = round(
+                    (float) $invoiceLines->where('ticket_number', $ticketTotal['ticket_number'])->sum('line_net_after_discount'),
+                    2
+                );
+
+                return $ticketTotal;
+            })
+            ->values();
+
+        $hoursLines = $invoiceLines->where('is_nm_service', true)->values();
+        $monthlyTotalHours = round((float) $hoursLines->sum('quantity'), 2);
+
+        $monthDate = $tickets->first()->acceptance_date ?? $tickets->first()->created_at ?? now();
+        $monthLabel = $monthDate->copy()->locale('de')->translatedFormat('F Y');
+
+        $sequenceNumber = 1 + (int) (MonthlyInvoice::query()
+            ->where('portal_scope', MonthlyInvoice::SCOPE_TH_SERVICES)
+            ->where('dolibarr_customer_id', $customerId)
+            ->where('invoice_year', (int) $monthDate->format('Y'))
+            ->where('invoice_month', (int) $monthDate->format('m'))
+            ->max('sequence_number') ?? 0);
+
+        $monthlyInvoice = MonthlyInvoice::query()->create([
+            'portal_scope' => MonthlyInvoice::SCOPE_TH_SERVICES,
+            'dolibarr_customer_id' => $customerId,
+            'invoice_year' => (int) $monthDate->format('Y'),
+            'invoice_month' => (int) $monthDate->format('m'),
+            'sequence_number' => $sequenceNumber,
+            'generated_at' => now(),
+        ]);
+        $monthlyInvoice->tickets()->attach($tickets->pluck('id')->all());
+
+        $suffix = $monthDate->copy()->format('Y-m').'-'.$sequenceNumber;
+        $fileName = 'th-services-monatsrechnung-'.$suffix.'.pdf';
+        $hoursFileName = 'th-services-stundennachweis-'.$suffix.'.pdf';
+        $invoiceNumber = 'THS-MON-'.$monthDate->copy()->format('Ym').'-'.$customerId.'-'.$sequenceNumber;
+
+        $letterhead = [
+            'sender' => config('th_services_invoice.sender', []),
+            'bank' => config('th_services_invoice.bank', []),
+            'vatNote' => (string) config('th_services_invoice.vat_note', ''),
+            'invoiceRecipient' => $invoiceRecipient,
+            'invoiceNumber' => $invoiceNumber,
+        ];
+
+        $payload = array_merge($letterhead, [
+            'tickets' => $tickets,
+            'createdAt' => now(),
+            'monthLabel' => $monthLabel,
+            'thTicketTotals' => $thTicketTotals,
+            'totalNet' => round((float) $thTicketTotals->sum('net_total'), 2),
+        ]);
+
+        if (! class_exists(Pdf::class)) {
+            return response()->view('tickets.th-services-monthly-invoice', $payload);
+        }
+
+        $invoicePdfBinary = Pdf::loadView('tickets.th-services-monthly-invoice', $payload)->setPaper('a4', 'portrait')->output();
+
+        if (! class_exists(\ZipArchive::class)) {
+            return response($invoicePdfBinary, 200, [
+                'Content-Type' => 'application/pdf',
+                'Content-Disposition' => 'attachment; filename="'.$fileName.'"',
+            ]);
+        }
+
+        $hoursPayload = array_merge($letterhead, [
+            'tickets' => $tickets,
+            'createdAt' => now(),
+            'hoursLines' => $hoursLines,
+            'monthLabel' => $monthLabel,
+            'monthlyTotalHours' => $monthlyTotalHours,
+        ]);
+        $hoursPdfBinary = Pdf::loadView('tickets.th-services-monthly-invoice-hours', $hoursPayload)->setPaper('a4', 'portrait')->output();
+
+        $zipPath = tempnam(sys_get_temp_dir(), 'th_monatsrechnung_').'.zip';
+        $zip = new \ZipArchive();
+        $zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE);
+        $zip->addFromString($fileName, $invoicePdfBinary);
+        $zip->addFromString($hoursFileName, $hoursPdfBinary);
+        $zip->close();
+
+        return response()->download($zipPath, 'th-services-monatsrechnung-'.$suffix.'.zip')->deleteFileAfterSend(true);
+    }
+
+    public function printTicket(Ticket $ticket, GeiserInvoiceCalculator $invoiceCalculator)
+    {
+        $ticket->load(['customerMachine', 'customerMachineProfile', 'parts', 'serviceLines']);
+
+        $payload = [
+            'ticket' => $ticket,
+            'invoiceSummary' => $invoiceCalculator->summarize($ticket),
+            'generatedAt' => now(),
+        ];
+
+        $fileName = 'ticket-'.$ticket->ticket_number.'.pdf';
+
+        if (! class_exists(Pdf::class)) {
+            return response()->view('tickets.print', $payload);
+        }
+
+        $pdf = Pdf::loadView('tickets.print', $payload)->setPaper('a4', 'portrait');
+
+        return $pdf->stream($fileName);
     }
 
     public function generateGeiserInvoice(Request $request, Ticket $ticket, DolibarrClient $dolibarr, GeiserInvoiceCalculator $invoiceCalculator)
@@ -585,6 +917,39 @@ class TicketController extends Controller
             'Content-Length' => (string) strlen($pdfBinary),
             'Cache-Control' => 'private, max-age=0, must-revalidate',
         ]);
+    }
+
+    /**
+     * Alternative Rechnungskopie mit TH Services & Solutions als Rechnungssteller (Kleinunternehmer
+     * gem. §19 UStG). Der Rechnungsbetrag entspricht dem Netto-Betrag der regulaeren Rechnung, da
+     * hier keine Umsatzsteuer ausgewiesen wird - Netto = Brutto.
+     */
+    public function generateThServicesInvoice(Ticket $ticket, DolibarrClient $dolibarr, GeiserInvoiceCalculator $invoiceCalculator)
+    {
+        $ticket->load(['customerMachine', 'customerMachineProfile', 'parts', 'serviceLines']);
+        $invoiceRecipient = $dolibarr->getCustomer((int) $ticket->dolibarr_customer_id);
+        $invoiceSummary = $invoiceCalculator->summarize($ticket);
+
+        $payload = [
+            'ticket' => $ticket,
+            'invoiceRecipient' => $invoiceRecipient,
+            'invoiceLines' => $invoiceSummary['invoiceLines'],
+            'totalNet' => $invoiceSummary['totalNet'],
+            'sender' => config('th_services_invoice.sender', []),
+            'bank' => config('th_services_invoice.bank', []),
+            'vatNote' => (string) config('th_services_invoice.vat_note', ''),
+            'createdAt' => now(),
+        ];
+
+        $fileName = 'th-services-rechnung-'.$ticket->ticket_number.'.pdf';
+
+        if (! class_exists(Pdf::class)) {
+            return response()->view('tickets.th-services-invoice', $payload);
+        }
+
+        $pdf = Pdf::loadView('tickets.th-services-invoice', $payload)->setPaper('a4', 'portrait');
+
+        return $pdf->stream($fileName);
     }
 
     private function validatedTicketData(Request $request): array

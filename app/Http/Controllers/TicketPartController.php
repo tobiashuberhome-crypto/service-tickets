@@ -42,6 +42,7 @@ class TicketPartController extends Controller
             'manual_lines.*.label' => ['required', 'string', 'max:255'],
             'manual_lines.*.quantity' => ['required', 'numeric', 'min:0.01', 'max:100', 'regex:/^\d+(\.\d{1,2})?$/'],
             'manual_lines.*.sales_price' => ['required', 'numeric', 'min:0', 'max:999999.99'],
+            'manual_lines.*.no_discount' => ['nullable', 'boolean'],
         ]);
 
         DB::transaction(function () use ($ticket, $data): void {
@@ -57,6 +58,7 @@ class TicketPartController extends Controller
                     'vat_rate_snapshot' => 19,
                     'unit_snapshot' => 'Stk',
                     'stock_movement_id' => null,
+                    'no_discount' => (bool) ($line['no_discount'] ?? false),
                 ]);
             }
 

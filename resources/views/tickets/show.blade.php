@@ -15,6 +15,9 @@
             </p>
         </div>
         <div class="button-row">
+            @if ($ticket->priority)
+                <span class="badge" style="background:#dc2626; color:#fff;">⚑ Priorität</span>
+            @endif
             <span class="badge {{ $ticket->status }}">{{ $ticket->statusLabel() }}</span>
             <span class="badge {{ $ticket->sync_status }}">{{ $ticket->syncStatusLabel() }}</span>
             @if ($ticket->spare_part_order_required)
@@ -23,10 +26,18 @@
             @if ($ticket->created_via_customer_portal)
                 <span class="badge">Kundenportal</span>
             @endif
+            @if ($ticket->monthlyInvoices->isNotEmpty())
+                <span class="badge" style="background:#0ea5e9; color:#fff;" title="Bereits auf Monatsrechnung erfasst">Rechnung: {{ $ticket->monthlyInvoices->last()->invoice_label }}</span>
+            @endif
+            @if ($ticket->deliveryNotes->isNotEmpty())
+                <span class="badge" style="background:#0369a1; color:#fff;">Lieferschein: {{ optional($ticket->deliveryNotes->last()->created_at)->format('d.m.Y') }}</span>
+            @endif
             @if ($ticket->machine_returned)
                 <div class="alert success" style="margin-bottom: 0;">✓ Maschine wurde ausgegeben</div>
             @endif
+            <a class="btn secondary" href="{{ route('tickets.print', $ticket) }}" target="_blank" rel="noopener">Ticket drucken</a>
             <a class="btn secondary" id="invoice-open-btn" href="{{ route('tickets.geiser-invoice', $ticket) }}" data-mail-url="{{ route('tickets.geiser-invoice', ['ticket' => $ticket, 'send_mail' => 1]) }}" target="_blank" rel="noopener">Rechnung</a>
+            <a class="btn secondary" href="{{ route('tickets.th-services-invoice', $ticket) }}" target="_blank" rel="noopener">Rechnung (TH Services)</a>
             <a class="btn secondary" href="{{ route('tickets.index') }}">Zurueck</a>
         </div>
     </div>
@@ -53,16 +64,20 @@
     @if ($ticket->customer_photo_path)
     <div class="panel panel-body" style="margin-bottom: 16px;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-            <h3 style="margin:0;">📷 Foto des Reparaturauftrags (vom Kunden)</h3>
+            <h3 style="margin:0;">{{ str_ends_with($ticket->customer_photo_path, '.pdf') ? '📄 PDF' : '📷 Foto' }} des Reparaturauftrags (vom Kunden)</h3>
             <a href="{{ Storage::disk('public')->url($ticket->customer_photo_path) }}"
                target="_blank" class="btn secondary" style="font-size:13px;">
-                Vollbild öffnen
+                {{ str_ends_with($ticket->customer_photo_path, '.pdf') ? 'PDF öffnen' : 'Vollbild öffnen' }}
             </a>
         </div>
-        <img src="{{ Storage::disk('public')->url($ticket->customer_photo_path) }}"
-             alt="Foto Reparaturauftrag"
-             style="max-width:100%; max-height:500px; border-radius:6px; border:1px solid #ddd; cursor:pointer;"
-             onclick="window.open(this.src,'_blank')">
+        @if (str_ends_with($ticket->customer_photo_path, '.pdf'))
+            <p class="muted">PDF-Dokument (keine Bildvorschau verfügbar).</p>
+        @else
+            <img src="{{ Storage::disk('public')->url($ticket->customer_photo_path) }}"
+                 alt="Foto Reparaturauftrag"
+                 style="max-width:100%; max-height:500px; border-radius:6px; border:1px solid #ddd; cursor:pointer;"
+                 onclick="window.open(this.src,'_blank')">
+        @endif
     </div>
     @endif
 
@@ -359,6 +374,13 @@
                                     <label>Preis (netto)</label>
                                     <input type="number" name="manual_lines[0][sales_price]" value="0.00" min="0" max="999999.99" step="0.01" required>
                                 </div>
+                                <div>
+                                    <label>Rabatt</label>
+                                    <label style="display: flex; align-items: center; gap: 6px; font-weight: normal;">
+                                        <input type="checkbox" name="manual_lines[0][no_discount]" value="1" style="width: auto;">
+                                        kein Rabatt
+                                    </label>
+                                </div>
                             </div>
                         </div>
                         <div class="button-row">
@@ -516,6 +538,8 @@
                     input.value = '1.00';
                 } else if (input.name.endsWith('[sales_price]')) {
                     input.value = '0.00';
+                } else if (input.name.endsWith('[no_discount]')) {
+                    input.checked = false;
                 }
             });
 

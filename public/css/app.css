@@ -516,11 +516,35 @@ details .details-body {
     gap: 12px;
     padding: 14px 16px;
     border-bottom: 1px solid var(--line);
+    cursor: pointer;
+    user-select: none;
 }
 
 .ticket-week-head h2 {
     margin: 0;
     font-size: 18px;
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+}
+
+.ticket-week-toggle {
+    display: inline-block;
+    transition: transform 0.15s ease;
+    font-size: 14px;
+    color: var(--muted, #6b7280);
+}
+
+.ticket-week.is-collapsed .ticket-week-head {
+    border-bottom: none;
+}
+
+.ticket-week.is-collapsed .ticket-week-toggle {
+    transform: rotate(-90deg);
+}
+
+.ticket-week.is-collapsed .ticket-lane {
+    display: none;
 }
 
 .ticket-lane {

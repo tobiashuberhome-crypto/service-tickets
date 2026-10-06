@@ -7,6 +7,7 @@ use App\Models\CustomerPortalAccount;
 use App\Models\CustomerPortalMagicLink;
 use App\Models\CustomerPortalRequest;
 use App\Models\Ticket;
+use Illuminate\Support\Facades\Storage;
 use App\Services\Tickets\DolibarrOrderSyncService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -174,65 +175,45 @@ class CustomerPortalController extends Controller
     {
         $account = $this->account($request);
         $data = $request->validate([
-            'manufacturer_snapshot' => ['nullable', 'string', 'max:255'],
-            'machine_ref_snapshot' => ['required', 'string', 'max:255'],
-            'serial_number' => ['nullable', 'string', 'max:255'],
-            'service_enabled' => ['nullable', 'boolean'],
-            'cleaning' => ['nullable', 'boolean'],
-            'repair_enabled' => ['nullable', 'boolean'],
-            'spare_part_order_required' => ['nullable', 'boolean'],
-            'error_description' => ['required', 'string'],
+            'target_role' => ['required', 'in:superadmin,admin,member'],
+            'type' => ['required', 'in:feature,bug'],
+            'title' => ['required', 'string', 'max:255'],
+            'description' => ['required', 'string'],
+            'attachments' => ['nullable', 'array'],
+            'attachments.*' => ['file', 'max:10240'],
         ]);
 
-        if (! $request->boolean('service_enabled') && ! $request->boolean('repair_enabled')) {
-            throw ValidationException::withMessages([
-                'service_enabled' => 'Bitte waehlen Sie mindestens Service oder Reparatur aus.',
-            ]);
-        }
-
-        $machine = CustomerMachine::query()
-            ->where('dolibarr_customer_id', $account->dolibarr_thirdparty_id)
-            ->where('dolibarr_machine_product_id', 0)
-            ->where('machine_ref_snapshot', $data['machine_ref_snapshot'])
-            ->where('serial_number', $data['serial_number'] ?? null)
-            ->firstOrNew([
-                'dolibarr_customer_id' => $account->dolibarr_thirdparty_id,
-                'dolibarr_machine_product_id' => 0,
-                'serial_number' => $data['serial_number'] ?? null,
-            ]);
-
-        $machine->forceFill([
-            'customer_name_snapshot' => $account->company_name,
-            'manufacturer_snapshot' => $data['manufacturer_snapshot'] ?? null,
-            'machine_ref_snapshot' => $data['machine_ref_snapshot'],
-        ])->save();
-
         $ticket = Ticket::query()->create([
+            'ticket_number' => 'KP-'.time(),
             'dolibarr_customer_id' => $account->dolibarr_thirdparty_id,
             'customer_name_snapshot' => $account->company_name,
             'customer_contact_name_snapshot' => $account->contact_name,
             'customer_email_snapshot' => $account->email,
-            'customer_machine_id' => $machine->id,
             'created_via_customer_portal' => true,
             'customer_portal_account_id' => $account->id,
-            'service_enabled' => $request->boolean('service_enabled'),
-            'cleaning' => $request->boolean('cleaning'),
-            'repair_enabled' => $request->boolean('repair_enabled'),
-            'spare_part_order_required' => $request->boolean('spare_part_order_required'),
-            'error_description' => $data['error_description'],
+            'error_description' => $data['description'],
+            'technician_note' => $data['type'].' / '.$data['target_role'].' / '.$data['title'],
             'acceptance_date' => now()->toDateString(),
             'target_date' => null,
             'status' => Ticket::STATUS_OPEN,
-            'sync_status' => Ticket::SYNC_PENDING,
+            'sync_status' => Ticket::SYNC_SYNCED,
         ]);
 
-        try {
-            $sync->ensureDraftOrder($ticket);
-            $sync->prepareServiceLines($ticket);
-        } catch (Throwable $exception) {
-            $ticket->markSyncError($exception->getMessage());
-
-            return redirect()->route('customer-portal.dashboard')->with('warning', 'Ihr Ticket wurde gespeichert. Die interne Dolibarr-Synchronisierung muss noch geprueft werden.');
+        if ($request->hasFile('attachments')) {
+            foreach ($request->file('attachments', []) as $upload) {
+                $path = $upload->store('customer-portal-ticket-attachments', 'public');
+                $ticket->messages()->create([
+                    'body' => 'Anhang hochgeladen: '.$upload->getClientOriginalName(),
+                    'sender_type' => 'customer',
+                    'sender_label' => $account->company_name,
+                ])->attachments()->create([
+                    'disk' => 'public',
+                    'path' => $path,
+                    'original_name' => $upload->getClientOriginalName(),
+                    'mime_type' => $upload->getClientMimeType(),
+                    'size_bytes' => $upload->getSize(),
+                ]);
+            }
         }
 
         return redirect()->route('customer-portal.dashboard')->with('status', 'Ihr Ticket wurde erstellt.');

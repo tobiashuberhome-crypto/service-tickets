@@ -7,12 +7,15 @@ use App\Models\CustomerMachine;
 use App\Models\CustomerMachineProfile;
 use App\Models\CustomerPortalAccount;
 use App\Models\CustomerPortalMagicLink;
+use App\Models\MonthlyInvoice;
 use App\Models\Ticket;
+use App\Services\Dolibarr\DolibarrClient;
 use App\Services\Ocr\OcrService;
 use App\Services\Ocr\OcrDataParser;
 use App\Services\Tickets\DolibarrOrderSyncService;
 use App\Services\Tickets\GeiserInvoiceCalculator;
 use Exception;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -45,7 +48,7 @@ class GeiserCustomerPortalController extends Controller
         'estimate_qty_service_fee' => 1.0,
         'estimate_qty_vde' => 1.0,
         'estimate_qty_consumables' => 1.0,
-		'repair_approval_limit' => 200,00,
+        'repair_approval_limit' => 200.00,
     ];
 
     protected function portalRouteName(string $name): string
@@ -231,8 +234,7 @@ class GeiserCustomerPortalController extends Controller
         $account = $this->account($request);
         $hideReturned = $request->boolean('hide_returned');
         $customerIds = $this->customerIdsForPortal($account);
-        $tickets = Ticket::query()
-            ->whereIn('dolibarr_customer_id', $customerIds)
+        $tickets = $this->applyPortalVisibility(Ticket::query()->whereIn('dolibarr_customer_id', $customerIds))
             ->when($hideReturned, fn ($query) => $query->where('machine_returned', false))
             ->with(['customerMachine', 'customerMachineProfile'])
             ->latest()
@@ -264,7 +266,7 @@ class GeiserCustomerPortalController extends Controller
         ]);
     }
 
-    public function generateMonthlyInvoice(Request $request, GeiserInvoiceCalculator $invoiceCalculator)
+    public function generateMonthlyInvoice(Request $request, DolibarrClient $dolibarr, GeiserInvoiceCalculator $invoiceCalculator)
     {
         $account = $this->account($request);
         $data = $request->validate([
@@ -273,9 +275,8 @@ class GeiserCustomerPortalController extends Controller
         ]);
 
         $customerIds = $this->customerIdsForPortal($account);
-        $tickets = Ticket::query()
+        $tickets = $this->applyPortalVisibility(Ticket::query()->whereIn('dolibarr_customer_id', $customerIds))
             ->with(['customerMachine', 'customerMachineProfile', 'parts', 'serviceLines'])
-            ->whereIn('dolibarr_customer_id', $customerIds)
             ->whereIn('id', $data['ticket_ids'])
             ->orderBy('acceptance_date')
             ->orderBy('ticket_number')
@@ -283,36 +284,138 @@ class GeiserCustomerPortalController extends Controller
 
         if ($tickets->isEmpty()) {
             return redirect()->route($this->portalRouteName('dashboard'))
-                ->with('warning', 'Es wurden keine Tickets für die Monatsrechnung ausgewählt.');
+                ->with('warning', 'Es wurden keine Tickets fÃ¼r die Monatsrechnung ausgewÃ¤hlt.');
         }
 
-        $invoiceSummaryByTicket = $tickets
-            ->mapWithKeys(fn (Ticket $ticket): array => [(string) $ticket->id => $invoiceCalculator->summarize($ticket)])
-            ->all();
-        $monthlyTotalGross = round(
-            (float) collect($invoiceSummaryByTicket)->sum(fn (array $summary): float => (float) ($summary['totalGross'] ?? 0)),
-            2
-        );
+        try {
+            $invoiceRecipient = $dolibarr->getCustomer((int) $account->dolibarr_thirdparty_id);
+        } catch (Throwable $exception) {
+            Log::warning('Monatsrechnung (Portal): Dolibarr-Kunde konnte nicht geladen werden, verwende Konto-Snapshot.', [
+                'dolibarr_thirdparty_id' => $account->dolibarr_thirdparty_id,
+                'error' => $exception->getMessage(),
+            ]);
+            $invoiceRecipient = ['name' => $account->company_name];
+        }
+
+        $invoiceSummary = $invoiceCalculator->summarizeMany($tickets);
+
+        $hoursLines = collect($invoiceSummary['invoiceLines'])->where('is_nm_service', true)->values();
+        $monthlyTotalHours = round((float) $hoursLines->sum('quantity'), 2);
 
         $monthDate = $tickets->first()->acceptance_date ?? $tickets->first()->created_at ?? now();
         $monthLabel = $monthDate->copy()->locale('de')->translatedFormat('F Y');
-        $fileName = 'monatsrechnung-'.$monthDate->copy()->format('Y-m').'.pdf';
 
-        $payload = [
+        // Calculate sequence number for multiple invoices in the same month
+        $existingInvoices = MonthlyInvoice::query()
+            ->where('portal_scope', static::PORTAL_SCOPE)
+            ->where('dolibarr_customer_id', $account->dolibarr_thirdparty_id)
+            ->where('invoice_year', (int) $monthDate->format('Y'))
+            ->where('invoice_month', (int) $monthDate->format('m'))
+            ->max('sequence_number') ?? 0;
+
+        $sequenceNumber = $existingInvoices + 1;
+        $fileName = 'monatsrechnung-'.$monthDate->copy()->format('Y-m').'-'.$sequenceNumber.'.pdf';
+        $hoursFileName = 'stundennachweis-'.$monthDate->copy()->format('Y-m').'-'.$sequenceNumber.'.pdf';
+
+        // Create MonthlyInvoice record and associate tickets
+        $monthlyInvoice = MonthlyInvoice::query()->create([
+            'portal_scope' => static::PORTAL_SCOPE,
+            'dolibarr_customer_id' => $account->dolibarr_thirdparty_id,
+            'invoice_year' => (int) $monthDate->format('Y'),
+            'invoice_month' => (int) $monthDate->format('m'),
+            'sequence_number' => $sequenceNumber,
+            'generated_at' => now(),
+        ]);
+
+        // Associate tickets with the invoice
+        $monthlyInvoice->tickets()->attach($tickets->pluck('id')->toArray());
+
+        $letterhead = [
+            'sender' => config('geiser_invoice.sender', []),
+            'bank' => config('geiser_invoice.bank', []),
+            'footerNote' => (string) config('geiser_invoice.footer_note', ''),
+            'invoiceRecipient' => $invoiceRecipient,
+        ];
+
+        $payload = array_merge($letterhead, $invoiceSummary, [
             'tickets' => $tickets,
             'createdAt' => now(),
-            'invoiceSummaryByTicket' => $invoiceSummaryByTicket,
             'monthLabel' => $monthLabel,
-            'monthlyTotalGross' => $monthlyTotalGross,
-        ];
+            'monthlyInvoice' => $monthlyInvoice,
+        ]);
 
         if (! class_exists(Pdf::class)) {
             return response()->view($this->portalView('monthly-invoice'), $payload);
         }
 
-        $pdf = Pdf::loadView($this->portalView('monthly-invoice'), $payload)->setPaper('a4', 'portrait');
+        $invoicePdfBinary = Pdf::loadView($this->portalView('monthly-invoice'), $payload)->setPaper('a4', 'portrait')->output();
 
-        return $pdf->download($fileName);
+        if (! class_exists(\ZipArchive::class)) {
+            return response($invoicePdfBinary, 200, [
+                'Content-Type' => 'application/pdf',
+                'Content-Disposition' => 'attachment; filename="'.$fileName.'"',
+            ]);
+        }
+
+        $hoursPayload = array_merge($letterhead, [
+            'tickets' => $tickets,
+            'createdAt' => now(),
+            'hoursLines' => $hoursLines,
+            'monthLabel' => $monthLabel,
+            'monthlyTotalHours' => $monthlyTotalHours,
+            'monthlyInvoice' => $monthlyInvoice,
+        ]);
+        $hoursPdfBinary = Pdf::loadView($this->portalView('monthly-invoice-hours'), $hoursPayload)->setPaper('a4', 'portrait')->output();
+
+        $zipPath = tempnam(sys_get_temp_dir(), 'monatsrechnung_').'.zip';
+        $zip = new \ZipArchive();
+        $zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE);
+        $zip->addFromString($fileName, $invoicePdfBinary);
+        $zip->addFromString($hoursFileName, $hoursPdfBinary);
+        $zip->close();
+
+        $zipFileName = 'monatsrechnung-'.$monthDate->copy()->format('Y-m').'-'.$sequenceNumber.'.zip';
+
+        return response()->download($zipPath, $zipFileName)->deleteFileAfterSend(true);
+    }
+
+    /**
+     * Portal-Lieferschein fuer selbst gewaehlte Tickets. Noch nicht per Route freigeschaltet
+     * (kein Button/Route im Kundenportal) - bereits jetzt ueber applyPortalVisibility() geschuetzt,
+     * damit THSS-Tickets bei einer spaeteren Aktivierung fuer Cibena automatisch ausgeschlossen bleiben.
+     */
+    public function generateDeliveryNote(Request $request)
+    {
+        $account = $this->account($request);
+        $data = $request->validate([
+            'ticket_ids' => ['required', 'array', 'min:1'],
+            'ticket_ids.*' => ['integer', 'exists:tickets,id'],
+        ]);
+
+        $customerIds = $this->customerIdsForPortal($account);
+        $tickets = $this->applyPortalVisibility(Ticket::query()->whereIn('dolibarr_customer_id', $customerIds))
+            ->whereIn('id', $data['ticket_ids'])
+            ->with(['customerMachine'])
+            ->orderBy('ticket_number')
+            ->get();
+
+        if ($tickets->isEmpty()) {
+            return redirect()->route($this->portalRouteName('dashboard'))
+                ->with('warning', 'Es wurden keine Tickets fuer den Lieferschein ausgewaehlt.');
+        }
+
+        $payload = [
+            'tickets' => $tickets,
+            'generated_at' => now(),
+        ];
+
+        if (! class_exists(Pdf::class)) {
+            return response()->view($this->portalView('delivery-note'), $payload);
+        }
+
+        $pdf = Pdf::loadView($this->portalView('delivery-note'), $payload)->setPaper('a4', 'portrait');
+
+        return $pdf->download('lieferschein-'.now()->format('Ymd-His').'.pdf');
     }
 
     public function createTicket(Request $request): View
@@ -340,8 +443,8 @@ class GeiserCustomerPortalController extends Controller
         $history = $this->ticketHistoryData($account, $serialNumber);
 
         $customerIds = $this->customerIdsForPortal($account);
-        $profile = CustomerMachineProfile::query()
-            ->whereIn('dolibarr_customer_id', $customerIds)
+        $profile = $this->applyProfileVisibility(CustomerMachineProfile::query()
+            ->whereIn('dolibarr_customer_id', $customerIds))
             ->where('serial_number', $serialNumber)
             ->first();
 
@@ -418,7 +521,7 @@ class GeiserCustomerPortalController extends Controller
             'estimate_qty_service_fee' => ['nullable', 'numeric', 'min:0', 'max:999.99'],
             'estimate_qty_vde' => ['nullable', 'numeric', 'min:0', 'max:999.99'],
             'estimate_qty_consumables' => ['nullable', 'numeric', 'min:0', 'max:999.99'],
-            'customer_photo' => ['nullable', 'image', 'max:8192'],
+            'customer_photo' => ['nullable', 'mimetypes:image/jpeg,image/png,image/webp,application/pdf', 'max:8192'],
         ]);
 
         $serialNumber = trim((string) ($data['serial_number'] ?? ''));
@@ -480,7 +583,7 @@ class GeiserCustomerPortalController extends Controller
         $machine->forceFill([
             'customer_name_snapshot' => $account->company_name,
             'manufacturer_snapshot' => $profile->manufacturer_snapshot,
-            'machine_ref_snapshot' => $profile->machine_ref_snapshot ?: ($data['machine_ref_snapshot'] ?? '—'),
+            'machine_ref_snapshot' => $profile->machine_ref_snapshot ?: ($data['machine_ref_snapshot'] ?? 'â€”'),
         ])->save();
 
         $ticket = Ticket::query()->create([
@@ -494,6 +597,7 @@ class GeiserCustomerPortalController extends Controller
             'customer_portal_account_id' => $account->id,
             'service_enabled' => false,
             'cleaning' => false,
+            'priority' => $this->supportsPriority() && $request->boolean('priority'),
             'repair_enabled' => true,
             'spare_part_order_required' => false,
             'error_description' => $errorDescription,
@@ -717,7 +821,7 @@ class GeiserCustomerPortalController extends Controller
             'estimate_qty_service_fee' => ['nullable', 'numeric', 'min:0', 'max:999.99'],
             'estimate_qty_vde' => ['nullable', 'numeric', 'min:0', 'max:999.99'],
             'estimate_qty_consumables' => ['nullable', 'numeric', 'min:0', 'max:999.99'],
-            'customer_photo' => ['nullable', 'image', 'max:8192'],
+            'customer_photo' => ['nullable', 'mimetypes:image/jpeg,image/png,image/webp,application/pdf', 'max:8192'],
         ]);
 
         $currentProfile = $ticket->customerMachineProfile;
@@ -812,6 +916,9 @@ class GeiserCustomerPortalController extends Controller
             'customer_portal_estimate_total' => $estimateTotal,
             'machine_returned' => $request->boolean('machine_returned'),
         ];
+        if ($this->supportsPriority()) {
+            $updateData['priority'] = $request->boolean('priority');
+        }
         $newPhotoPath = $this->storeCustomerPhoto($request);
         if ($newPhotoPath !== null) {
             if ($ticket->customer_photo_path) {
@@ -943,7 +1050,7 @@ class GeiserCustomerPortalController extends Controller
             ->first();
     }
 
-    private function account(Request $request): CustomerPortalAccount
+    public function account(Request $request): CustomerPortalAccount
     {
         return CustomerPortalAccount::query()
             ->whereKey((int) $request->session()->get(static::SESSION_KEY))
@@ -996,20 +1103,55 @@ class GeiserCustomerPortalController extends Controller
         return [(int) $account->dolibarr_thirdparty_id];
     }
 
-    private function canViewTicket(CustomerPortalAccount $account, Ticket $ticket): bool
+    /**
+     * Hook for portal-specific ticket exclusions (e.g. Cibena hides THSS-flagged tickets).
+     * Geiser applies no additional restriction here.
+     *
+     * @param Builder<Ticket> $query
+     * @return Builder<Ticket>
+     */
+    protected function applyPortalVisibility(Builder $query): Builder
     {
-        return in_array((int) $ticket->dolibarr_customer_id, $this->customerIdsForPortal($account), true);
+        return $query;
     }
 
-    private function canEditTicket(CustomerPortalAccount $account, Ticket $ticket): bool
+    /**
+     * Hook for portal-specific exclusions of machine profiles (Cibena hides profiles of machines
+     * that carry THSS tickets). Geiser applies no additional restriction here.
+     *
+     * @param Builder<CustomerMachineProfile> $query
+     * @return Builder<CustomerMachineProfile>
+     */
+    protected function applyProfileVisibility(Builder $query): Builder
     {
-        return $this->canViewTicket($account, $ticket)
-            && $ticket->status === Ticket::STATUS_OPEN;
+        return $query;
+    }
+
+    /**
+     * Das Kennzeichen "Hohe Prioritaet" gibt es nur im Geiser-Portal (Cibena ueberschreibt auf false).
+     */
+    protected function supportsPriority(): bool
+    {
+        return true;
+    }
+
+    public function canViewTicket(CustomerPortalAccount $account, Ticket $ticket): bool
+    {
+        if (! in_array((int) $ticket->dolibarr_customer_id, $this->customerIdsForPortal($account), true)) {
+            return false;
+        }
+
+        return $this->applyPortalVisibility(Ticket::query()->whereKey($ticket->getKey()))->exists();
+    }
+
+    protected function canEditTicket(CustomerPortalAccount $account, Ticket $ticket): bool
+    {
+        return $this->canViewTicket($account, $ticket);
     }
 
     private function customerVisibleStatus(Ticket $ticket): string
     {
-        // intern erledigt ist für Kunden nicht sichtbar → bleibt "in Bearbeitung"
+        // intern erledigt ist fÃ¼r Kunden nicht sichtbar â†’ bleibt "in Bearbeitung"
         if ($ticket->status === Ticket::STATUS_INTERNALLY_DONE) {
             return 'in Bearbeitung';
         }
@@ -1019,8 +1161,7 @@ class GeiserCustomerPortalController extends Controller
     private function ticketHistoryData(CustomerPortalAccount $account, string $serialNumber): array
     {
         $customerIds = $this->customerIdsForPortal($account);
-        $tickets = Ticket::query()
-            ->whereIn('dolibarr_customer_id', $customerIds)
+        $tickets = $this->applyPortalVisibility(Ticket::query()->whereIn('dolibarr_customer_id', $customerIds))
             ->where(function ($query) use ($serialNumber): void {
                 $query->whereHas('customerMachineProfile', function ($profileQuery) use ($serialNumber): void {
                     $profileQuery->where('serial_number', $serialNumber);

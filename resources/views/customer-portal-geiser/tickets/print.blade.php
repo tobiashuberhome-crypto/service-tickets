@@ -17,7 +17,6 @@
         th { background: #f3f4f6; }
         .signature { margin-top: 34px; }
         .signature-line { margin-top: 42px; border-top: 1px solid #111827; width: 320px; padding-top: 6px; }
-        .page-break { page-break-before: always; }
     </style>
 </head>
 <body>
@@ -160,11 +159,6 @@
         <div class="signature-line">Datum, Unterschrift Kunde</div>
     </div>
 
-    <div class="page-break"></div>
-    <h2>Rueckseite / Hinweise</h2>
-    <p>
-        Platzhaltertext: Hier werden spaeter die verbindlichen Hinweise, AGB-Auszuege oder
-        weitere Informationen fuer die Rueckseite des Reparaturtickets eingefuegt.
-    </p>
+    @include('partials.ticket-print-footer-note')
 </body>
 </html>

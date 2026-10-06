@@ -18,6 +18,8 @@
                     <thead>
                     <tr>
                         <th>Ticket</th>
+                        <th>Typ</th>
+                        <th>Rolle</th>
                         <th>Status</th>
                         <th>Maschine</th>
                         <th>Erstellt</th>
@@ -27,6 +29,8 @@
                     @foreach ($tickets as $ticket)
                         <tr>
                             <td>{{ $ticket->ticket_number }}</td>
+                            <td>{{ str_contains((string) $ticket->technician_note, 'bug') ? 'BUG' : 'Feature' }}</td>
+                            <td>{{ str_contains((string) $ticket->technician_note, 'superadmin') ? 'Superadmin' : (str_contains((string) $ticket->technician_note, 'admin') ? 'Admin' : 'Member') }}</td>
                             <td>{{ $ticket->statusLabel() }}</td>
                             <td>{{ $ticket->customerMachine?->displayName() }}</td>
                             <td>{{ $ticket->created_at?->format('d.m.Y H:i') }}</td>

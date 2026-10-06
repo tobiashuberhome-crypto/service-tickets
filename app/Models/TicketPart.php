@@ -23,6 +23,7 @@ class TicketPart extends Model
         'unit_snapshot',
         'dolibarr_order_line_id',
         'stock_movement_id',
+        'no_discount',
     ];
 
     protected $casts = [
@@ -30,6 +31,7 @@ class TicketPart extends Model
         'purchase_price_snapshot' => 'decimal:2',
         'sales_price_snapshot' => 'decimal:2',
         'vat_rate_snapshot' => 'decimal:2',
+        'no_discount' => 'boolean',
     ];
 
     public function ticket(): BelongsTo

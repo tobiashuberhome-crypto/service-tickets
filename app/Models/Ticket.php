@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
@@ -54,6 +55,8 @@ class Ticket extends Model
         'completed_at',
         'machine_returned',
         'cleaning',
+        'thss',
+        'priority',
     ];
 
     protected $casts = [
@@ -68,6 +71,8 @@ class Ticket extends Model
         'completed_at' => 'datetime',
         'machine_returned' => 'boolean',
         'cleaning' => 'boolean',
+        'thss' => 'boolean',
+        'priority' => 'boolean',
         'dolibarr_invoice_id' => 'integer',
     ];
 
@@ -113,6 +118,30 @@ class Ticket extends Model
     public function messages(): HasMany
     {
         return $this->hasMany(TicketMessage::class)->orderBy('created_at');
+    }
+
+    public function monthlyInvoices(): BelongsToMany
+    {
+        return $this->belongsToMany(MonthlyInvoice::class, 'monthly_invoice_ticket')
+            ->withTimestamps();
+    }
+
+    public function deliveryNotes(): BelongsToMany
+    {
+        return $this->belongsToMany(DeliveryNote::class, 'delivery_note_ticket')
+            ->withTimestamps();
+    }
+
+    public function getMonthlyInvoiceLabelsAttribute(): array
+    {
+        $latestInvoice = $this->monthlyInvoices()
+            ->where('portal_scope', '!=', MonthlyInvoice::SCOPE_TH_SERVICES)
+            ->orderBy('invoice_year', 'desc')
+            ->orderBy('invoice_month', 'desc')
+            ->orderBy('sequence_number', 'desc')
+            ->first();
+
+        return $latestInvoice ? [$latestInvoice->invoice_label] : [];
     }
 
     public function statusLabel(): string

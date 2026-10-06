@@ -50,6 +50,7 @@ class GeiserInvoiceCalculator
             'unit_price' => (float) $line->sales_price_snapshot,
             'vat_rate' => $this->normalizeVatRate($line->vat_rate_snapshot),
             'discount_rate' => $isNmService ? 0.0 : 0.20,
+            'is_nm_service' => $isNmService,
         ];
     }
 
@@ -66,7 +67,8 @@ class GeiserInvoiceCalculator
             'quantity' => (float) $part->quantity,
             'unit_price' => (float) $part->sales_price_snapshot,
             'vat_rate' => $this->normalizeVatRate($part->vat_rate_snapshot),
-            'discount_rate' => 0.20,
+            'discount_rate' => $part->no_discount ? 0.0 : 0.20,
+            'is_nm_service' => false,
         ];
     }
 
@@ -86,6 +88,69 @@ class GeiserInvoiceCalculator
         $line['discounted_total'] = $line['line_gross_after_discount'];
 
         return $line;
+    }
+
+    /**
+     * Combines invoiceLines and totals from multiple tickets into a single invoice, e.g. for a
+     * monthly invoice covering several tickets of the same customer. Each line is tagged with
+     * the ticket/machine it came from so the combined table stays traceable.
+     *
+     * @param  Collection<int, Ticket>  $tickets
+     */
+    public function summarizeMany(Collection $tickets): array
+    {
+        $invoiceLines = $tickets
+            ->flatMap(function (Ticket $ticket): Collection {
+                $lines = $this->withCopyTexts($ticket, $this->summarize($ticket)['invoiceLines']);
+
+                return $lines->map(function (array $line) use ($ticket): array {
+                    $line['ticket_number'] = $ticket->ticket_number;
+                    $line['machine_label'] = $this->machineLabel($ticket);
+
+                    return $line;
+                });
+            })
+            ->values();
+
+        $totalOriginalNet = round((float) $invoiceLines->sum('line_gross'), 2);
+        $totalDiscountAmount = round((float) $invoiceLines->sum('discount_amount_gross'), 2);
+        $totalNet = round((float) $invoiceLines->sum('line_net_after_discount'), 2);
+        $totalVat = round((float) $invoiceLines->sum('vat_amount'), 2);
+        $totalGross = round((float) $invoiceLines->sum('line_gross_after_discount'), 2);
+
+        $ticketTotals = $tickets
+            ->map(function (Ticket $ticket) use ($invoiceLines): array {
+                $ticketLines = $invoiceLines->where('ticket_number', $ticket->ticket_number);
+
+                return [
+                    'ticket_number' => $ticket->ticket_number,
+                    'dolibarr_order_ref' => $ticket->dolibarr_order_ref,
+                    'machine_label' => $ticketLines->first()['machine_label'] ?? $this->machineLabel($ticket),
+                    'serial_number' => $ticket->customerMachine?->serial_number ?: $ticket->customerMachineProfile?->serial_number ?: '-',
+                    'total' => round((float) $ticketLines->sum('line_gross_after_discount'), 2),
+                    'vat_amount' => round((float) $ticketLines->sum('vat_amount'), 2),
+                ];
+            })
+            ->values();
+
+        return [
+            'invoiceLines' => $invoiceLines,
+            'ticketTotals' => $ticketTotals,
+            'totalOriginalNet' => $totalOriginalNet,
+            'totalDiscountAmount' => $totalDiscountAmount,
+            'totalNet' => $totalNet,
+            'totalVat' => $totalVat,
+            'totalGross' => $totalGross,
+            'vatLabel' => $this->buildVatLabel($invoiceLines),
+        ];
+    }
+
+    private function machineLabel(Ticket $ticket): string
+    {
+        $manufacturer = trim((string) ($ticket->customerMachine?->manufacturer_snapshot ?: $ticket->customerMachineProfile?->manufacturer_snapshot));
+        $machineRef = trim((string) ($ticket->customerMachine?->machine_ref_snapshot ?: $ticket->customerMachineProfile?->machine_ref_snapshot));
+
+        return trim($manufacturer.' '.$machineRef) ?: '-';
     }
 
     public function withCopyTexts(Ticket $ticket, Collection $invoiceLines): Collection

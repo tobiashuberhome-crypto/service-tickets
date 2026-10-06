@@ -35,7 +35,9 @@
                 @csrf
                 <button class="btn secondary" type="button" id="select-all-tickets">Alle markieren</button>
                 <button class="btn secondary" type="submit" formaction="{{ route('tickets.delivery-note') }}">Lieferschein erstellen</button>
+                <button class="btn secondary" type="submit" formaction="{{ route('tickets.th-services-delivery-note') }}">Lieferschein (TH Services)</button>
                 <button class="btn" type="submit" formaction="{{ route('tickets.monthly-invoice') }}">Monatsrechnung erstellen</button>
+                <button class="btn" type="submit" formaction="{{ route('tickets.th-services-monthly-invoice') }}">Monatsrechnung erstellen (THSS)</button>
             </form>
             <a class="btn" href="{{ route('tickets.create') }}">Neues Ticket</a>
         </div>
@@ -56,6 +58,15 @@
                     @endforeach
                 </select>
             </div>
+            <div>
+                <label for="customer">Kunde</label>
+                <select id="customer" name="customer">
+                    <option value="">Alle</option>
+                    @foreach ($customerOptions as $option)
+                        <option value="{{ $option['value'] }}" @selected($activeCustomer === $option['value'])>{{ $option['label'] }}</option>
+                    @endforeach
+                </select>
+            </div>
             <div class="button-row" style="align-items: end;">
                 <button class="btn" type="submit">Filtern</button>
                 <a class="btn secondary" href="{{ route('tickets.index') }}">Zuruecksetzen</a>
@@ -73,9 +84,9 @@
 
     <div id="ticket-board" class="ticket-board" data-reorder-url="{{ route('tickets.reorder') }}">
         {{-- Eingangskacheln --}}
-        <section class="ticket-week panel" data-week-start="">
+        <section class="ticket-week panel" data-week-start="" data-collapse-key="schul-portal">
             <div class="ticket-week-head">
-                <h2>Schul-Portal</h2>
+                <h2><span class="ticket-week-toggle">▾</span> Schul-Portal</h2>
                 <span class="muted">{{ $schoolPortalIncoming->count() }} Ticket(s)</span>
             </div>
             <div class="ticket-lane" data-week-start="">
@@ -85,9 +96,9 @@
             </div>
         </section>
 
-        <section class="ticket-week panel" data-week-start="">
+        <section class="ticket-week panel" data-week-start="" data-collapse-key="easy-appointments">
             <div class="ticket-week-head">
-                <h2>EasyAppointments</h2>
+                <h2><span class="ticket-week-toggle">▾</span> EasyAppointments</h2>
                 <span class="muted">{{ $easyAppointmentsIncoming->count() }} Ticket(s)</span>
             </div>
             <div class="ticket-lane" data-week-start="">
@@ -103,9 +114,9 @@
                 $ticketsForWeek = $weekGroups[$week['key']]['tickets'] ?? collect();
                 $renderedWeekKeys->push($week['key']);
             @endphp
-            <section class="ticket-week panel" data-week-start="{{ $week['key'] }}">
+            <section class="ticket-week panel" data-week-start="{{ $week['key'] }}" data-collapse-key="week-{{ $week['key'] }}">
                 <div class="ticket-week-head">
-                    <h2>{{ $week['label'] }}</h2>
+                    <h2><span class="ticket-week-toggle">▾</span> {{ $week['label'] }}</h2>
                     <span class="muted">{{ $ticketsForWeek->count() }} Ticket(s)</span>
                 </div>
                 <div class="ticket-lane" data-week-start="{{ $week['key'] }}">
@@ -119,9 +130,9 @@
         {{-- Weitere vorhandene Wochen mit Tickets anzeigen --}}
         @foreach ($weekGroups as $week)
             @continue($renderedWeekKeys->contains($week['key']))
-            <section class="ticket-week panel" data-week-start="{{ $week['key'] }}">
+            <section class="ticket-week panel" data-week-start="{{ $week['key'] }}" data-collapse-key="week-{{ $week['key'] }}">
                 <div class="ticket-week-head">
-                    <h2>{{ $week['label'] }}</h2>
+                    <h2><span class="ticket-week-toggle">▾</span> {{ $week['label'] }}</h2>
                     <span class="muted">{{ $week['tickets']->count() }} Ticket(s)</span>
                 </div>
                 <div class="ticket-lane" data-week-start="{{ $week['key'] }}">
@@ -132,9 +143,9 @@
             </section>
         @endforeach
 
-        <section class="ticket-week panel" data-week-start="">
+        <section class="ticket-week panel" data-week-start="" data-collapse-key="ohne-frist">
             <div class="ticket-week-head">
-                <h2>Ohne Frist</h2>
+                <h2><span class="ticket-week-toggle">▾</span> Ohne Frist</h2>
                 <span class="muted">{{ $withoutTargetDate->count() }} Ticket(s)</span>
             </div>
             <div class="ticket-lane" data-week-start="">
@@ -166,6 +177,11 @@
                             <th>Maschine</th>
                             <th>Seriennummer</th>
                             <th>Datum</th>
+                            <th>Status</th>
+                            <th>Ausgeliefert</th>
+                            <th>Ausgegeben</th>
+                            <th>Rechnung</th>
+                            <th>Lieferschein</th>
                         </tr>
                         </thead>
                         <tbody>
@@ -174,11 +190,45 @@
                                 <td>
                                     <input type="checkbox" name="ticket_ids[]" value="{{ $ticket->id }}" class="delivery-note-checkbox" form="ticket-selection-form">
                                 </td>
-                                <td><a href="{{ route('tickets.show', $ticket) }}">{{ $ticket->dolibarr_order_ref ?: $ticket->ticket_number }}</a></td>
+                                <td>
+                                    <a href="{{ route('tickets.show', $ticket) }}">{{ $ticket->dolibarr_order_ref ?: $ticket->ticket_number }}</a>
+                                    @if ($ticket->thss)
+                                        <span class="badge" style="background:#7c3aed; color:#fff;" title="Nicht im Cibena-Portal sichtbar">THSS</span>
+                                    @endif
+                                </td>
                                 <td>{{ $ticket->customer_name_snapshot }}</td>
                                 <td>{{ $ticket->customerMachine?->manufacturer_snapshot }} / {{ $ticket->customerMachine?->machine_ref_snapshot }}</td>
                                 <td>{{ $ticket->customerMachine?->serial_number ?: '-' }}</td>
                                 <td>{{ $ticket->acceptance_date?->format('d.m.Y') ?: $ticket->created_at?->format('d.m.Y') }}</td>
+                                <td><span class="badge {{ $ticket->status }}">{{ $ticket->statusLabel() }}</span></td>
+                                <td>
+                                    @if ($ticket->status === \App\Models\Ticket::STATUS_DELIVERED)
+                                        <span class="badge" style="background:#16a34a; color:#fff;">✓</span>
+                                    @else
+                                        -
+                                    @endif
+                                </td>
+                                <td>
+                                    @if ($ticket->machine_returned)
+                                        <span class="badge" style="background:#16a34a; color:#fff;">✓</span>
+                                    @else
+                                        -
+                                    @endif
+                                </td>
+                                <td>
+                                    @if ($ticket->monthlyInvoices->isNotEmpty())
+                                        <span class="badge" style="background:#0ea5e9; color:#fff;" title="{{ $ticket->monthlyInvoices->last()->invoice_label }}">✓</span>
+                                    @else
+                                        -
+                                    @endif
+                                </td>
+                                <td>
+                                    @if ($ticket->deliveryNotes->isNotEmpty())
+                                        <span class="badge" style="background:#0369a1; color:#fff;" title="{{ optional($ticket->deliveryNotes->last()->created_at)->format('d.m.Y') }}">✓</span>
+                                    @else
+                                        -
+                                    @endif
+                                </td>
                             </tr>
                         @endforeach
                         </tbody>
@@ -242,8 +292,53 @@
         });
     }
 
+    const collapseStorageKey = 'ticketBoard.collapsedSections';
+
+    function loadCollapsedKeys() {
+        try {
+            return new Set(JSON.parse(localStorage.getItem(collapseStorageKey) || '[]'));
+        } catch (error) {
+            return new Set();
+        }
+    }
+
+    function saveCollapsedKeys(keys) {
+        try {
+            localStorage.setItem(collapseStorageKey, JSON.stringify([...keys]));
+        } catch (error) {
+            // localStorage nicht verfuegbar - Collapse-Status wird dann nicht gemerkt.
+        }
+    }
+
+    function bindWeekSection(section) {
+        if (section.dataset.boundCollapse === '1') return;
+        section.dataset.boundCollapse = '1';
+
+        const head = section.querySelector('.ticket-week-head');
+        const key = section.dataset.collapseKey;
+        if (!head || !key) return;
+
+        if (loadCollapsedKeys().has(key)) {
+            section.classList.add('is-collapsed');
+        }
+
+        head.addEventListener('click', () => {
+            const collapsedKeys = loadCollapsedKeys();
+            const isCollapsed = section.classList.toggle('is-collapsed');
+
+            if (isCollapsed) {
+                collapsedKeys.add(key);
+            } else {
+                collapsedKeys.delete(key);
+            }
+
+            saveCollapsedKeys(collapsedKeys);
+        });
+    }
+
     board.querySelectorAll('.ticket-card').forEach(bindCard);
     board.querySelectorAll('.ticket-lane').forEach(bindLane);
+    board.querySelectorAll('.ticket-week').forEach(bindWeekSection);
 
     function getCardAfter(lane, x) {
         return [...lane.querySelectorAll('.ticket-card:not(.dragging)')]
@@ -329,10 +424,11 @@
         const section = document.createElement('section');
         section.className = 'ticket-week panel';
         section.dataset.weekStart = nextKey;
+        section.dataset.collapseKey = `week-${nextKey}`;
 
         section.innerHTML = `
             <div class="ticket-week-head">
-                <h2>${weekLabel(nextKey)}</h2>
+                <h2><span class="ticket-week-toggle">▾</span> ${weekLabel(nextKey)}</h2>
                 <span class="muted">0 Ticket(s)</span>
             </div>
             <div class="ticket-lane" data-week-start="${nextKey}"></div>
@@ -341,6 +437,7 @@
         board.appendChild(section);
         const lane = section.querySelector('.ticket-lane');
         bindLane(lane);
+        bindWeekSection(section);
     });
 })();
 

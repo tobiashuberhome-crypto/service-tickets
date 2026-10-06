@@ -13,6 +13,9 @@
     </label>
     <a class="ticket-card {{ $cardClass }}" href="{{ route('tickets.show', $ticket) }}" draggable="true" data-ticket-id="{{ $ticket->id }}" style="padding-left: 38px;">
         <div class="ticket-card-head">
+            @if ($ticket->priority)
+                <span class="badge" style="background:#dc2626; color:#fff;" title="Hohe Priorität">⚑</span>
+            @endif
             <span class="ticket-number">{{ $ticket->dolibarr_order_ref ?: $ticket->ticket_number }}</span>
             <span class="badge {{ $ticket->status }}">{{ $ticket->statusLabel() }}</span>
         </div>
@@ -43,6 +46,15 @@
             @endif
             @if ($ticket->created_via_customer_portal)
                 <span class="badge">Kundenportal</span>
+            @endif
+            @if ($ticket->thss)
+                <span class="badge" style="background:#7c3aed; color:#fff;" title="Nicht im Cibena-Portal sichtbar">THSS</span>
+            @endif
+            @if ($ticket->monthlyInvoices->isNotEmpty())
+                <span class="badge" style="background:#0ea5e9; color:#fff;" title="Bereits auf Monatsrechnung: {{ $ticket->monthlyInvoices->last()->invoice_label }}">Rechnung ✓</span>
+            @endif
+            @if ($ticket->deliveryNotes->isNotEmpty())
+                <span class="badge" style="background:#0369a1; color:#fff;" title="Bereits auf Lieferschein vom {{ optional($ticket->deliveryNotes->last()->created_at)->format('d.m.Y') }}">Lieferschein ✓</span>
             @endif
         </div>
     </a>
