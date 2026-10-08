@@ -220,10 +220,10 @@ class TicketController extends Controller
             : null;
         $partManufacturer = $request->has('part_manufacturer')
             ? trim((string) $request->query('part_manufacturer'))
-            : (string) $ticket->customerMachine->manufacturer_snapshot;
+            : (string) ($ticket->customerMachine?->manufacturer_snapshot ?? $ticket->customerMachineProfile?->manufacturer_snapshot);
         $partMachineRef = $request->has('part_machine_ref')
             ? trim((string) $request->query('part_machine_ref'))
-            : (string) $ticket->customerMachine->machine_ref_snapshot;
+            : (string) ($ticket->customerMachine?->machine_ref_snapshot ?? $ticket->customerMachineProfile?->machine_ref_snapshot);
         $partsWarning = null;
 
         $availableParts = collect();
@@ -286,11 +286,22 @@ class TicketController extends Controller
                 ->get();
         }
 
+        // Tickets ohne verknuepfte Maschine (nur Maschinenprofil) haben evtl. keine Referenz -
+        // dann gibt es keine passenden Dokumente, statt eines Treffers auf leere Werte.
+        $documentMachineRef = $ticket->customerMachine?->machine_ref_snapshot ?? $ticket->customerMachineProfile?->machine_ref_snapshot;
+        $documentProductId = $ticket->customerMachine?->dolibarr_machine_product_id;
+
         $documents = MachineDocument::query()
             ->where('active', true)
-            ->where(function ($query) use ($ticket): void {
-                $query->where('machine_ref', $ticket->customerMachine->machine_ref_snapshot)
-                    ->orWhere('machine_product_id', $ticket->customerMachine->dolibarr_machine_product_id);
+            ->where(function ($query) use ($documentMachineRef, $documentProductId): void {
+                if (blank($documentMachineRef) && blank($documentProductId)) {
+                    $query->whereRaw('1 = 0');
+
+                    return;
+                }
+
+                $query->when(filled($documentMachineRef), fn ($q) => $q->where('machine_ref', $documentMachineRef))
+                    ->when(filled($documentProductId), fn ($q) => $q->orWhere('machine_product_id', $documentProductId));
             })
             ->orderBy('title')
             ->get();
