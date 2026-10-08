@@ -655,6 +655,8 @@ class GeiserCustomerPortalController extends Controller
             'account' => $account,
             'ticket' => $ticket,
             'isEditable' => $this->canEditTicket($account, $ticket),
+            'canSetCgStatus' => $this->canSetCgStatus($account, $ticket),
+            'cgStatusOptions' => Ticket::portalCgStatusOptions(),
             'customerStatusLabel' => $this->customerVisibleStatus($ticket),
             'estimateLines' => $estimateLines,
             'estimateTotal' => $estimateTotal,
@@ -683,6 +685,22 @@ class GeiserCustomerPortalController extends Controller
 
         return redirect()->route($this->portalRouteName('tickets.show'), $ticket)
             ->with('status', 'Der Ausgabestatus der Maschine wurde aktualisiert.');
+    }
+
+    public function updateCgStatus(Request $request, Ticket $ticket): RedirectResponse
+    {
+        $account = $this->account($request);
+
+        abort_unless($this->canSetCgStatus($account, $ticket), 403);
+
+        $data = $request->validate([
+            'status' => ['required', 'in:'.implode(',', array_keys(Ticket::portalCgStatusOptions()))],
+        ]);
+
+        $ticket->forceFill(['status' => $data['status']])->save();
+
+        return redirect()->route($this->portalRouteName('tickets.show'), $ticket)
+            ->with('status', 'Der Status wurde auf "'.$ticket->statusLabel().'" gesetzt.');
     }
 
     public function printTicket(Request $request, Ticket $ticket)
@@ -1147,6 +1165,14 @@ class GeiserCustomerPortalController extends Controller
     protected function canEditTicket(CustomerPortalAccount $account, Ticket $ticket): bool
     {
         return $this->canViewTicket($account, $ticket);
+    }
+
+    /**
+     * Nur das Geiser-Portal setzt "bei CG" / "an TH übergeben"; Cibena überschreibt das mit false.
+     */
+    protected function canSetCgStatus(CustomerPortalAccount $account, Ticket $ticket): bool
+    {
+        return $this->canViewTicket($account, $ticket) && $ticket->portalMayChangeCgStatus();
     }
 
     private function customerVisibleStatus(Ticket $ticket): string

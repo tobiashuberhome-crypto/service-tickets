@@ -74,6 +74,14 @@ class CibenaCustomerPortalController extends GeiserCustomerPortalController
             && $ticket->status === Ticket::STATUS_OPEN;
     }
 
+    /**
+     * Cibena sieht die Status "bei CG" / "an TH übergeben", setzt sie aber nicht.
+     */
+    protected function canSetCgStatus(CustomerPortalAccount $account, Ticket $ticket): bool
+    {
+        return false;
+    }
+
     public function monthlyInvoices(Request $request): \Illuminate\View\View
     {
         $account = $this->account($request);

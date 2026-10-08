@@ -211,7 +211,7 @@ class SchoolPortalController extends Controller
 
         $existing = Ticket::query()
             ->where('customer_machine_id', $machine->id)
-            ->whereIn('status', [Ticket::STATUS_OPEN, Ticket::STATUS_IN_PROGRESS, Ticket::STATUS_INTERNALLY_DONE])
+            ->whereIn('status', [Ticket::STATUS_AT_CG, Ticket::STATUS_HANDED_TO_TH, Ticket::STATUS_OPEN, Ticket::STATUS_IN_PROGRESS, Ticket::STATUS_INTERNALLY_DONE])
             ->where('error_description', 'like', 'Problem: '.$data['problem_type'].'%')
             ->latest('id')
             ->first();
@@ -501,7 +501,7 @@ class SchoolPortalController extends Controller
         }
 
         return match ($ticket->status) {
-            Ticket::STATUS_OPEN, Ticket::STATUS_IN_PROGRESS, Ticket::STATUS_INTERNALLY_DONE => 'Ticket offen',
+            Ticket::STATUS_AT_CG, Ticket::STATUS_HANDED_TO_TH, Ticket::STATUS_OPEN, Ticket::STATUS_IN_PROGRESS, Ticket::STATUS_INTERNALLY_DONE => 'Ticket offen',
             Ticket::STATUS_DONE, Ticket::STATUS_DELIVERED => 'einsatzbereit',
             default => 'unbekannt',
         };
@@ -515,7 +515,7 @@ class SchoolPortalController extends Controller
         }
 
         return match ($ticket->status) {
-            Ticket::STATUS_OPEN, Ticket::STATUS_IN_PROGRESS, Ticket::STATUS_INTERNALLY_DONE => 'status-ticket',
+            Ticket::STATUS_AT_CG, Ticket::STATUS_HANDED_TO_TH, Ticket::STATUS_OPEN, Ticket::STATUS_IN_PROGRESS, Ticket::STATUS_INTERNALLY_DONE => 'status-ticket',
             Ticket::STATUS_DONE, Ticket::STATUS_DELIVERED => 'status-ok',
             default => 'status-unknown',
         };

@@ -14,6 +14,10 @@ class Ticket extends Model
 {
     use HasFactory;
 
+    // Vorstufen, die im Geiser-Portal gesetzt werden (Cibena liest nur, Admin darf alles).
+    public const STATUS_AT_CG = 'at_cg';
+    public const STATUS_HANDED_TO_TH = 'handed_to_th';
+
     public const STATUS_OPEN = 'open';
     public const STATUS_IN_PROGRESS = 'in_progress';
     public const STATUS_INTERNALLY_DONE = 'internally_done';
@@ -161,12 +165,36 @@ class Ticket extends Model
     public static function statusOptions(): array
     {
         return [
+            self::STATUS_AT_CG => 'bei CG',
+            self::STATUS_HANDED_TO_TH => 'an TH übergeben',
             self::STATUS_OPEN => 'offen',
             self::STATUS_IN_PROGRESS => 'in Bearbeitung',
             self::STATUS_INTERNALLY_DONE => 'intern erledigt',
             self::STATUS_DONE => 'erledigt',
             self::STATUS_DELIVERED => 'geliefert',
         ];
+    }
+
+    /**
+     * Die beiden Status, die das Geiser-Portal setzen darf.
+     *
+     * @return array<string, string>
+     */
+    public static function portalCgStatusOptions(): array
+    {
+        return array_intersect_key(self::statusOptions(), [
+            self::STATUS_AT_CG => true,
+            self::STATUS_HANDED_TO_TH => true,
+        ]);
+    }
+
+    /**
+     * Das Portal darf den Status nur in der Vorphase ändern; sobald das Ticket in Arbeit ist
+     * (in Bearbeitung und später), liegt der Status allein beim Admin.
+     */
+    public function portalMayChangeCgStatus(): bool
+    {
+        return in_array($this->status, [self::STATUS_AT_CG, self::STATUS_HANDED_TO_TH, self::STATUS_OPEN], true);
     }
 
     public function isDone(): bool

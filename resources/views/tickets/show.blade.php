@@ -144,7 +144,7 @@
 
             <div class="button-row">
                 <button class="btn" type="submit">Speichern</button>
-                @if ($ticket->status === \App\Models\Ticket::STATUS_OPEN)
+                @if (in_array($ticket->status, [\App\Models\Ticket::STATUS_AT_CG, \App\Models\Ticket::STATUS_HANDED_TO_TH, \App\Models\Ticket::STATUS_OPEN], true))
                     <form method="post" action="{{ route('tickets.activate-order', $ticket) }}" style="display:inline;">
                         @csrf
                         <button class="btn secondary" type="submit">Auftrag aktivieren</button>

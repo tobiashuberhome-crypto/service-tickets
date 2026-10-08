@@ -34,7 +34,7 @@ class TrainingsAppController extends Controller
     public function updateStatus(Request $request, Ticket $ticket): RedirectResponse
     {
         $request->validate([
-            'status' => ['required', 'in:open,in_progress,internally_done,done,delivered'],
+            'status' => ['required', 'in:'.implode(',', array_keys(Ticket::statusOptions()))],
         ]);
 
         $ticket->update(['status' => $request->status]);

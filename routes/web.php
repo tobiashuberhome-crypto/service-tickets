@@ -74,6 +74,7 @@ Route::prefix('/kundenportal/geiser')->group(function (): void {
         Route::post('/tickets/{ticket}/work-report/send-mail', [GeiserCustomerPortalController::class, 'mailWorkReport'])->name('geiser-portal.tickets.work-report.mail');
         Route::get('/tickets/{ticket}', [GeiserCustomerPortalController::class, 'showTicket'])->name('geiser-portal.tickets.show');
         Route::put('/tickets/{ticket}', [GeiserCustomerPortalController::class, 'updateTicket'])->name('geiser-portal.tickets.update');
+        Route::put('/tickets/{ticket}/cg-status', [GeiserCustomerPortalController::class, 'updateCgStatus'])->name('geiser-portal.tickets.cg-status');
         Route::put('/tickets/{ticket}/machine-returned', [GeiserCustomerPortalController::class, 'updateMachineReturned'])->name('geiser-portal.tickets.machine-returned');
         Route::post('/tickets/{ticket}/messages', [TicketMessageController::class, 'storeGeiser'])->name('geiser-portal.tickets.messages.store');
         Route::get('/tickets/{ticket}/messages/{message}/attachments/{attachment}', [TicketMessageController::class, 'downloadGeiserAttachment'])->name('geiser-portal.tickets.messages.attachments.download');

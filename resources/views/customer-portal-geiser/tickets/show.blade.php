@@ -53,6 +53,27 @@
         </div>
     @endif
 
+    @if ($canSetCgStatus)
+        <form method="post" action="{{ route('geiser-portal.tickets.cg-status', $ticket) }}" class="panel panel-body stack" style="margin-bottom: 1rem;">
+            @csrf
+            @method('PUT')
+            <h3>Bearbeitungsstand</h3>
+            <p class="muted">Hier legen Sie fest, ob das Ticket noch bei CG liegt oder an TH übergeben wurde.</p>
+            <div class="button-row">
+                <select name="status" aria-label="Status">
+                    @foreach ($cgStatusOptions as $value => $label)
+                        <option value="{{ $value }}" @selected($ticket->status === $value)>{{ $label }}</option>
+                    @endforeach
+                    @unless (array_key_exists($ticket->status, $cgStatusOptions))
+                        <option value="" selected disabled>{{ $customerStatusLabel }}</option>
+                    @endunless
+                </select>
+                <button class="btn" type="submit">Status setzen</button>
+            </div>
+            @error('status') <span class="error">{{ $message }}</span> @enderror
+        </form>
+    @endif
+
     <div class="grid grid-2">
         <!-- Maschine / Profil -->
         <div class="panel panel-body stack">
