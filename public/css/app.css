@@ -786,3 +786,68 @@ details .details-body {
         padding-left: 52px !important;
     }
 }
+
+/* Mobile: Monatstabelle als Kartenliste */
+@media (max-width: 980px) {
+    .month-table,
+    .month-table tbody {
+        display: block;
+    }
+
+    .month-table thead {
+        display: none;
+    }
+
+    .month-table tr {
+        display: grid;
+        grid-template-columns: 34px 1fr;
+        gap: 2px 10px;
+        padding: 12px;
+        margin-bottom: 10px;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: #fff;
+    }
+
+    .month-table td {
+        grid-column: 1 / -1;
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 3px 0;
+        border-bottom: none;
+        text-align: right;
+    }
+
+    .month-table td::before {
+        content: attr(data-label);
+        color: var(--muted);
+        font-size: 12px;
+        text-transform: uppercase;
+        text-align: left;
+    }
+
+    .month-table td.cell-select {
+        grid-column: 1;
+        grid-row: 1;
+        padding: 0;
+        align-items: center;
+    }
+
+    .month-table td.cell-ticket {
+        grid-column: 2;
+        grid-row: 1;
+        justify-content: flex-start;
+        align-items: center;
+        gap: 8px;
+        font-weight: 800;
+        font-size: 16px;
+        text-align: left;
+    }
+
+    .month-table td.cell-select input {
+        width: 24px;
+        height: 24px;
+        margin: 0;
+    }
+}

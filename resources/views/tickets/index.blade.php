@@ -174,7 +174,7 @@
             <div style="margin-bottom: 1.5rem;">
                 <h3 style="margin: 0 0 .75rem;">{{ $month['label'] }}</h3>
                 <div class="table-wrap">
-                    <table>
+                    <table class="month-table">
                         <thead>
                         <tr>
                             <th style="width: 30px;"></th>
@@ -193,42 +193,42 @@
                         <tbody>
                         @foreach ($month['tickets'] as $ticket)
                             <tr>
-                                <td>
+                                <td class="cell-select">
                                     <input type="checkbox" name="ticket_ids[]" value="{{ $ticket->id }}" class="delivery-note-checkbox" form="ticket-selection-form">
                                 </td>
-                                <td>
+                                <td class="cell-ticket">
                                     <a href="{{ route('tickets.show', $ticket) }}">{{ $ticket->dolibarr_order_ref ?: $ticket->ticket_number }}</a>
                                     @if ($ticket->thss)
                                         <span class="badge" style="background:#7c3aed; color:#fff;" title="Nicht im Cibena-Portal sichtbar">THSS</span>
                                     @endif
                                 </td>
-                                <td>{{ $ticket->customer_name_snapshot }}</td>
-                                <td>{{ $ticket->customerMachine?->manufacturer_snapshot }} / {{ $ticket->customerMachine?->machine_ref_snapshot }}</td>
-                                <td>{{ $ticket->customerMachine?->serial_number ?: '-' }}</td>
-                                <td>{{ $ticket->acceptance_date?->format('d.m.Y') ?: $ticket->created_at?->format('d.m.Y') }}</td>
-                                <td><span class="badge {{ $ticket->status }}">{{ $ticket->statusLabel() }}</span></td>
-                                <td>
+                                <td data-label="Kunde">{{ $ticket->customer_name_snapshot }}</td>
+                                <td data-label="Maschine">{{ $ticket->customerMachine?->manufacturer_snapshot }} / {{ $ticket->customerMachine?->machine_ref_snapshot }}</td>
+                                <td data-label="Seriennummer">{{ $ticket->customerMachine?->serial_number ?: '-' }}</td>
+                                <td data-label="Datum">{{ $ticket->acceptance_date?->format('d.m.Y') ?: $ticket->created_at?->format('d.m.Y') }}</td>
+                                <td data-label="Status"><span class="badge {{ $ticket->status }}">{{ $ticket->statusLabel() }}</span></td>
+                                <td data-label="Ausgeliefert">
                                     @if ($ticket->status === \App\Models\Ticket::STATUS_DELIVERED)
                                         <span class="badge" style="background:#16a34a; color:#fff;">✓</span>
                                     @else
                                         -
                                     @endif
                                 </td>
-                                <td>
+                                <td data-label="Ausgegeben">
                                     @if ($ticket->machine_returned)
                                         <span class="badge" style="background:#16a34a; color:#fff;">✓</span>
                                     @else
                                         -
                                     @endif
                                 </td>
-                                <td>
+                                <td data-label="Rechnung">
                                     @if ($ticket->monthlyInvoices->isNotEmpty())
                                         <span class="badge" style="background:#0ea5e9; color:#fff;" title="{{ $ticket->monthlyInvoices->last()->invoice_label }}">✓</span>
                                     @else
                                         -
                                     @endif
                                 </td>
-                                <td>
+                                <td data-label="Lieferschein">
                                     @if ($ticket->deliveryNotes->isNotEmpty())
                                         <span class="badge" style="background:#0369a1; color:#fff;" title="{{ optional($ticket->deliveryNotes->last()->created_at)->format('d.m.Y') }}">✓</span>
                                     @else
