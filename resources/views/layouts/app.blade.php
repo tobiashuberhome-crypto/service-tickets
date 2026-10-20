@@ -14,6 +14,7 @@
         <a class="brand" href="{{ route('tickets.index') }}">Service Tickets</a>
         <button type="button" class="btn secondary nav-toggle" data-mobile-toggle="#main-nav" aria-expanded="false" aria-controls="main-nav">Menü</button>
         <nav class="nav" id="main-nav">
+            <a href="{{ route('heute.index') }}" @class(['active' => request()->routeIs('heute.*')])>Heute</a>
             <a href="{{ route('tickets.index') }}" @class(['active' => request()->routeIs('tickets.*')])>Tickets</a>
             <a href="{{ route('customer-portal-requests.index') }}" @class(['active' => request()->routeIs('customer-portal-requests.*')])>Kundenanfragen</a>
             <a href="{{ route('monthly-invoices.index') }}" @class(['active' => request()->routeIs('monthly-invoices.*')])>Monatsrechnungen</a>

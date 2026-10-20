@@ -20,6 +20,7 @@ use App\Http\Controllers\SparePartController;
 use App\Http\Controllers\TicketController;
 use App\Http\Controllers\WarehouseController;
 use App\Http\Controllers\TicketPartController;
+use App\Http\Controllers\TodayController;
 use App\Http\Controllers\TicketMessageController;
 use App\Http\Controllers\TicketServiceLineController;
 use Illuminate\Support\Facades\Route;
@@ -142,6 +143,7 @@ Route::prefix('/schulportal')->group(function (): void {
 });
 
 Route::middleware('admin.auth')->group(function (): void {
+    Route::get('/heute', [TodayController::class, 'index'])->name('heute.index');
     Route::get('/tickets', [TicketController::class, 'index'])->name('tickets.index');
     Route::get('/tickets/create', [TicketController::class, 'create'])->name('tickets.create');
     Route::post('/tickets', [TicketController::class, 'store'])->name('tickets.store');
