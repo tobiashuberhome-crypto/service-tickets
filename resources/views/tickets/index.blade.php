@@ -31,6 +31,8 @@
             <p class="muted">Service- und Reparaturauftraege nach Quellen und Kalenderwochen.</p>
         </div>
         <div class="button-row">
+            <button type="button" class="btn secondary mobile-toggle" data-mobile-toggle="#ticket-actions" aria-expanded="false" aria-controls="ticket-actions">Aktionen</button>
+            <div class="mobile-collapsible" id="ticket-actions">
             <form id="ticket-selection-form" method="post">
                 @csrf
                 <button class="btn secondary" type="button" id="select-all-tickets">Alle markieren</button>
@@ -39,11 +41,14 @@
                 <button class="btn" type="submit" formaction="{{ route('tickets.monthly-invoice') }}">Monatsrechnung erstellen</button>
                 <button class="btn" type="submit" formaction="{{ route('tickets.th-services-monthly-invoice') }}">Monatsrechnung erstellen (THSS)</button>
             </form>
+            </div>
             <a class="btn" href="{{ route('tickets.create') }}">Neues Ticket</a>
         </div>
     </div>
 
     <form class="panel panel-body" method="get" action="{{ route('tickets.index') }}">
+        <button type="button" class="btn secondary mobile-toggle" data-mobile-toggle="#ticket-filters" aria-expanded="false" aria-controls="ticket-filters">Suche &amp; Filter</button>
+        <div class="mobile-collapsible{{ ($search || $activeStatus || $activeCustomer) ? ' open' : '' }}" id="ticket-filters">
         <div class="grid grid-3">
             <div>
                 <label for="q">Suche</label>
@@ -77,6 +82,7 @@
                 <input type="checkbox" name="hide_returned" value="1" @checked($hideReturned) onchange="this.form.submit()">
                 Ausgegebene Maschinen ausblenden
             </label>
+        </div>
         </div>
     </form>
 

@@ -699,3 +699,90 @@ details .details-body {
     gap: 8px;
     margin-top: 8px;
 }
+
+/* Mobile: Menue, Aktionen und Filter einklappbar, Board untereinander */
+.nav-toggle,
+.mobile-toggle {
+    display: none;
+}
+
+@media (max-width: 980px) {
+    .topbar {
+        position: static;
+        gap: 10px;
+        padding-top: 12px;
+        padding-bottom: 12px;
+    }
+
+    .topbar .brand {
+        align-self: flex-start;
+    }
+
+    .nav-toggle,
+    .mobile-toggle {
+        display: inline-flex;
+        width: 100%;
+    }
+
+    .nav {
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .nav .btn {
+        margin-left: 0 !important;
+        width: 100%;
+    }
+
+    .js .nav:not(.open),
+    .js .mobile-collapsible:not(.open) {
+        display: none;
+    }
+
+    .mobile-collapsible {
+        margin-top: 10px;
+    }
+
+    .mobile-collapsible .btn,
+    .mobile-collapsible form {
+        width: 100%;
+    }
+
+    .mobile-collapsible form {
+        display: grid;
+        gap: 8px;
+    }
+
+    .page-header .button-row {
+        display: grid;
+        gap: 8px;
+    }
+
+    .page-header .button-row > .btn {
+        width: 100%;
+    }
+
+    .ticket-lane {
+        flex-direction: column;
+        overflow-x: visible;
+        min-height: 0;
+    }
+
+    .ticket-lane .ticket-card {
+        min-width: 0;
+        max-width: none;
+    }
+
+    .ticket-card {
+        cursor: pointer;
+    }
+
+    .delivery-note-checkbox {
+        width: 24px !important;
+        height: 24px !important;
+    }
+
+    .ticket-card[style*="padding-left"] {
+        padding-left: 52px !important;
+    }
+}

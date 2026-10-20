@@ -6,12 +6,14 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ config('app.name') }}</title>
     <link rel="stylesheet" href="{{ asset('css/app.css') }}">
+    <script>document.documentElement.classList.add('js');</script>
 </head>
 <body>
 <div class="app-shell">
     <header class="topbar">
         <a class="brand" href="{{ route('tickets.index') }}">Service Tickets</a>
-        <nav class="nav">
+        <button type="button" class="btn secondary nav-toggle" data-mobile-toggle="#main-nav" aria-expanded="false" aria-controls="main-nav">Menü</button>
+        <nav class="nav" id="main-nav">
             <a href="{{ route('tickets.index') }}" @class(['active' => request()->routeIs('tickets.*')])>Tickets</a>
             <a href="{{ route('customer-portal-requests.index') }}" @class(['active' => request()->routeIs('customer-portal-requests.*')])>Kundenanfragen</a>
             <a href="{{ route('monthly-invoices.index') }}" @class(['active' => request()->routeIs('monthly-invoices.*')])>Monatsrechnungen</a>
@@ -37,6 +39,16 @@
     </main>
 </div>
 
+<script>
+document.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-mobile-toggle]');
+    if (!button) return;
+    const target = document.querySelector(button.dataset.mobileToggle);
+    if (!target) return;
+    const open = target.classList.toggle('open');
+    button.setAttribute('aria-expanded', open ? 'true' : 'false');
+});
+</script>
 <script src="{{ asset('js/scanner.js') }}"></script>
 @stack('scripts')
 </body>
