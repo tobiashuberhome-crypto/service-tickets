@@ -6,6 +6,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Admin Login</title>
     <link rel="stylesheet" href="{{ asset('css/app.css') }}">
+    @include('partials.pwa')
 </head>
 <body>
 <div class="app-shell">

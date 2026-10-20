@@ -7,6 +7,7 @@
     <title>{{ config('app.name') }}</title>
     <link rel="stylesheet" href="{{ asset('css/app.css') }}">
     <script>document.documentElement.classList.add('js');</script>
+    @include('partials.pwa')
 </head>
 <body>
 <div class="app-shell">
