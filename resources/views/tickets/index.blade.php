@@ -48,7 +48,8 @@
 
     <form class="panel panel-body" method="get" action="{{ route('tickets.index') }}">
         <button type="button" class="btn secondary mobile-toggle" data-mobile-toggle="#ticket-filters" aria-expanded="false" aria-controls="ticket-filters">Suche &amp; Filter</button>
-        <div class="mobile-collapsible{{ ($search || $activeStatus || $activeCustomer) ? ' open' : '' }}" id="ticket-filters">
+        <input type="hidden" name="f" value="1">
+        <div class="mobile-collapsible{{ $filtersSubmitted ? ' open' : '' }}" id="ticket-filters">
         <div class="grid grid-3">
             <div>
                 <label for="q">Suche</label>
@@ -82,6 +83,10 @@
                 <input type="checkbox" name="hide_returned" value="1" @checked($hideReturned) onchange="this.form.submit()">
                 Ausgegebene Maschinen ausblenden
             </label>
+            <label class="check-row">
+                <input type="checkbox" name="show_old_weeks" value="1" @checked($showOldWeeks) onchange="this.form.submit()">
+                Ältere Kalenderwochen einblenden (über 4 Wochen)
+            </label>
         </div>
         </div>
     </form>
@@ -89,6 +94,21 @@
     <div style="height: 18px;"></div>
 
     <div id="ticket-board" class="ticket-board" data-reorder-url="{{ route('tickets.reorder') }}">
+        {{-- Oben: offen, bei CG und an TH uebergeben - ohne Drag&Drop, die Planung passiert in den Wochen unten --}}
+        <section class="ticket-week panel" data-collapse-key="aktuell" data-no-persist="1">
+            <div class="ticket-week-head">
+                <h2><span class="ticket-week-toggle">▾</span> Offen, bei CG und an TH übergeben</h2>
+                <span class="muted">{{ $focusTickets->count() }} Ticket(s)</span>
+            </div>
+            <div class="ticket-lane ticket-lane-static">
+                @forelse ($focusTickets as $ticket)
+                    @include('tickets.partials.card', ['ticket' => $ticket, 'cardClass' => $ticketCardClass($ticket), 'static' => true])
+                @empty
+                    <p class="muted">Keine offenen Tickets.</p>
+                @endforelse
+            </div>
+        </section>
+
         {{-- Eingangskacheln --}}
         <section class="ticket-week panel" data-week-start="" data-collapse-key="schul-portal">
             <div class="ticket-week-head">
@@ -136,7 +156,7 @@
         {{-- Weitere vorhandene Wochen mit Tickets anzeigen --}}
         @foreach ($weekGroups as $week)
             @continue($renderedWeekKeys->contains($week['key']))
-            <section class="ticket-week panel" data-week-start="{{ $week['key'] }}" data-collapse-key="week-{{ $week['key'] }}">
+            <section class="ticket-week panel" data-week-start="{{ $week['key'] }}" data-collapse-key="week-{{ $week['key'] }}" @if ($week['collapsed']) data-auto-collapse="1" @endif>
                 <div class="ticket-week-head">
                     <h2><span class="ticket-week-toggle">▾</span> {{ $week['label'] }}</h2>
                     <span class="muted">{{ $week['tickets']->count() }} Ticket(s)</span>
@@ -148,6 +168,13 @@
                 </div>
             </section>
         @endforeach
+
+        @if ($hiddenWeekCount > 0)
+            <p class="muted" style="margin: 0;">
+                {{ $hiddenWeekCount }} ältere Kalenderwoche(n) mit {{ $hiddenWeekTicketCount }} Ticket(s) ausgeblendet.
+                Einblenden über den Filter „Ältere Kalenderwochen einblenden“.
+            </p>
+        @endif
 
         <section class="ticket-week panel" data-week-start="" data-collapse-key="ohne-frist">
             <div class="ticket-week-head">
@@ -324,13 +351,18 @@
         const key = section.dataset.collapseKey;
         if (!head || !key) return;
 
-        if (loadCollapsedKeys().has(key)) {
+        // Alte Wochen starten immer eingeklappt; Aufklappen gilt nur fuer diese Ansicht und wird nicht gemerkt.
+        const autoCollapse = section.dataset.autoCollapse === '1';
+
+        if (autoCollapse || loadCollapsedKeys().has(key)) {
             section.classList.add('is-collapsed');
         }
 
         head.addEventListener('click', () => {
-            const collapsedKeys = loadCollapsedKeys();
             const isCollapsed = section.classList.toggle('is-collapsed');
+            if (autoCollapse || section.dataset.noPersist === '1') return;
+
+            const collapsedKeys = loadCollapsedKeys();
 
             if (isCollapsed) {
                 collapsedKeys.add(key);
@@ -342,8 +374,8 @@
         });
     }
 
-    board.querySelectorAll('.ticket-card').forEach(bindCard);
-    board.querySelectorAll('.ticket-lane').forEach(bindLane);
+    board.querySelectorAll('.ticket-lane:not(.ticket-lane-static) .ticket-card').forEach(bindCard);
+    board.querySelectorAll('.ticket-lane:not(.ticket-lane-static)').forEach(bindLane);
     board.querySelectorAll('.ticket-week').forEach(bindWeekSection);
 
     function getCardAfter(lane, x) {

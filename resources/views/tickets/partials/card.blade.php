@@ -1,4 +1,5 @@
 <div style="position: relative;">
+    @unless (! empty($static))
     <label style="position: absolute; top: 50%; left: 10px; transform: translateY(-50%); z-index: 3; background: #fff; border-radius: 4px; padding: 4px; display: flex; align-items: center; justify-content: center;">
         <input
             type="checkbox"
@@ -11,7 +12,8 @@
             style="width: 16px; height: 16px; margin: 0;"
         >
     </label>
-    <a class="ticket-card {{ $cardClass }}" href="{{ route('tickets.show', $ticket) }}" draggable="true" data-ticket-id="{{ $ticket->id }}" style="padding-left: 38px;">
+    @endunless
+    <a class="ticket-card {{ $cardClass }}" href="{{ route('tickets.show', $ticket) }}" @if (empty($static)) draggable="true" style="padding-left: 38px;" @endif data-ticket-id="{{ $ticket->id }}">
         <div class="ticket-card-head">
             @if ($ticket->priority)
                 <span class="badge" style="background:#dc2626; color:#fff;" title="Hohe Priorität">⚑</span>

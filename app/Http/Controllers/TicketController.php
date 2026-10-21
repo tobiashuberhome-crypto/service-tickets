@@ -31,8 +31,17 @@ class TicketController extends Controller
     {
         $status = $request->query('status');
         $search = trim((string) $request->query('q'));
-        $hideReturned = $request->boolean('hide_returned');
-        $customerFilter = trim((string) $request->query('customer'));
+
+        // Standardwerte gelten nur, solange das Filterformular nicht abgeschickt wurde (Parameter f).
+        // Danach zaehlt ausschliesslich, was im Formular steht - auch eine abgewaehlte Checkbox.
+        $filtersSubmitted = $request->has('f');
+        $defaultCustomerId = config('tickets.default_customer_id');
+
+        $hideReturned = $filtersSubmitted ? $request->boolean('hide_returned') : true;
+        $showOldWeeks = $filtersSubmitted && $request->boolean('show_old_weeks');
+        $customerFilter = $filtersSubmitted
+            ? trim((string) $request->query('customer'))
+            : ($defaultCustomerId ? (string) $defaultCustomerId : '');
 
         $customerOptions = Ticket::query()
             ->selectRaw('dolibarr_customer_id, MAX(customer_name_snapshot) as label')
@@ -92,10 +101,21 @@ class TicketController extends Controller
 
         $planningTickets = $tickets->reject(fn (Ticket $ticket): bool => $incomingIds->contains($ticket->id));
 
-        $weekGroups = $planningTickets
+        // Oben im Board: alles, was gerade Aufmerksamkeit braucht - unabhaengig von der Kalenderwoche.
+        $focusStatuses = [Ticket::STATUS_OPEN, Ticket::STATUS_AT_CG, Ticket::STATUS_HANDED_TO_TH];
+        $focusTickets = $planningTickets
+            ->filter(fn (Ticket $ticket): bool => in_array($ticket->status, $focusStatuses, true))
+            ->values();
+
+        // Aeltere Wochen: ab collapse_weeks_after immer eingeklappt, ab hide_weeks_after ausgeblendet.
+        $thisMonday = Carbon::today()->startOfWeek(Carbon::MONDAY);
+        $collapseBefore = $thisMonday->copy()->subWeeks((int) config('tickets.collapse_weeks_after', 2));
+        $hideBefore = $thisMonday->copy()->subWeeks((int) config('tickets.hide_weeks_after', 4));
+
+        $allWeekGroups = $planningTickets
             ->filter(fn (Ticket $ticket): bool => $ticket->target_date !== null)
             ->groupBy(fn (Ticket $ticket): string => $ticket->target_date->copy()->startOfWeek(Carbon::MONDAY)->toDateString())
-            ->map(function ($weekTickets, string $weekStart): array {
+            ->map(function ($weekTickets, string $weekStart) use ($collapseBefore, $hideBefore): array {
                 $start = Carbon::parse($weekStart);
                 $end = $start->copy()->endOfWeek(Carbon::SUNDAY);
 
@@ -103,9 +123,14 @@ class TicketController extends Controller
                     'key' => $weekStart,
                     'label' => 'KW '.$start->isoWeek().' / '.$start->format('d.m.').' - '.$end->format('d.m.Y'),
                     'tickets' => $weekTickets,
+                    'collapsed' => $start->lt($collapseBefore),
+                    'old' => $start->lt($hideBefore),
                 ];
             })
             ->sortKeys();
+
+        $hiddenWeeks = $showOldWeeks ? collect() : $allWeekGroups->filter(fn (array $week): bool => $week['old']);
+        $weekGroups = $showOldWeeks ? $allWeekGroups : $allWeekGroups->reject(fn (array $week): bool => $week['old']);
 
         $withoutTargetDate = $planningTickets->filter(fn (Ticket $ticket): bool => $ticket->target_date === null);
 
@@ -138,6 +163,11 @@ class TicketController extends Controller
 
         return view('tickets.index', [
             'weekGroups' => $weekGroups,
+            'focusTickets' => $focusTickets,
+            'hiddenWeekCount' => $hiddenWeeks->count(),
+            'hiddenWeekTicketCount' => $hiddenWeeks->sum(fn (array $week): int => $week['tickets']->count()),
+            'showOldWeeks' => $showOldWeeks,
+            'filtersSubmitted' => $filtersSubmitted,
             'upcomingWeeks' => $upcomingWeeks,
             'withoutTargetDate' => $withoutTargetDate,
             'schoolPortalIncoming' => $schoolPortalIncoming,

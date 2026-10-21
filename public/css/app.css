@@ -942,3 +942,7 @@ details .details-body {
         font-size: 24px;
     }
 }
+
+.ticket-lane-static .ticket-card {
+    cursor: pointer;
+}
