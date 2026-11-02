@@ -37,10 +37,18 @@
         @if ($tickets->isEmpty())
             <p class="muted">Es wurden noch keine Tickets ueber das Cibena-Serviceportal erstellt.</p>
         @else
+            <form id="dashboard-selection-form" method="post" action="{{ route('cibena-portal.monthly-invoice') }}" class="button-row" style="margin-bottom: 1rem; align-items: center;">
+                @csrf
+                <button class="btn" type="submit">Monatsrechnung erstellen</button>
+                <span class="muted">Ticket(s) links markieren, dann die Monatsrechnung erstellen.</span>
+            </form>
             <div class="table-wrap">
                 <table>
                     <thead>
                     <tr>
+                        <th style="width: 30px;">
+                            <input type="checkbox" id="dashboard-select-all" title="Alle Tickets markieren" aria-label="Alle Tickets markieren">
+                        </th>
                         <th>Ticket</th>
                         <th>Status</th>
                         <th>Seriennummer</th>
@@ -52,6 +60,9 @@
                     <tbody>
                     @foreach ($tickets as $ticket)
                         <tr>
+                            <td>
+                                <input type="checkbox" class="dashboard-ticket-checkbox" name="ticket_ids[]" value="{{ $ticket->id }}" form="dashboard-selection-form" aria-label="Ticket {{ $ticket->ticket_number }} markieren">
+                            </td>
                             <td>
                                 <a href="{{ route('cibena-portal.tickets.show', $ticket) }}">{{ $ticket->ticket_number }}</a>
                                 @if (!$ticket->created_via_customer_portal)
@@ -85,7 +96,7 @@
                     <p class="muted">Ãœbersicht der Tickets gruppiert nach Annahme-/Erstellungsmonat.</p>
                 </div>
                 <div class="button-row">
-                    <form id="ticket-selection-form" method="post" action="{{ route('cibena-portal.monthly-invoice') }}">
+                    <form id="month-selection-form" method="post" action="{{ route('cibena-portal.monthly-invoice') }}">
                         @csrf
                         <button class="btn" type="submit">Monatsrechnung erstellen</button>
                     </form>
@@ -112,7 +123,7 @@
                             @foreach ($month['tickets'] as $ticket)
                                 <tr>
                                     <td>
-                                        <input type="checkbox" name="ticket_ids[]" value="{{ $ticket->id }}" form="ticket-selection-form">
+                                        <input type="checkbox" name="ticket_ids[]" value="{{ $ticket->id }}" form="month-selection-form">
                                     </td>
                                     <td>
                                         <a href="{{ route('cibena-portal.tickets.show', $ticket) }}">{{ $ticket->ticket_number }}</a>
@@ -137,4 +148,25 @@
             @endforeach
         </div>
     @endif
+
+@push('scripts')
+<script>
+(() => {
+            const all = document.getElementById('dashboard-select-all');
+            const boxes = Array.from(document.querySelectorAll('.dashboard-ticket-checkbox'));
+            const form = document.getElementById('dashboard-selection-form');
+            if (!all || !form) return;
+            all.addEventListener('change', () => boxes.forEach(box => { box.checked = all.checked; }));
+            boxes.forEach(box => box.addEventListener('change', () => {
+                all.checked = boxes.every(b => b.checked);
+            }));
+            form.addEventListener('submit', event => {
+                if (!boxes.some(b => b.checked)) {
+                    event.preventDefault();
+                    alert('Bitte mindestens ein Ticket markieren.');
+                }
+            });
+        })();
+</script>
+@endpush
 @endsection
