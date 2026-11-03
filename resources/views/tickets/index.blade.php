@@ -38,6 +38,10 @@
                 <button class="btn secondary" type="button" id="select-all-tickets">Alle markieren</button>
                 <button class="btn secondary" type="submit" formaction="{{ route('tickets.delivery-note') }}">Lieferschein erstellen</button>
                 <button class="btn secondary" type="submit" formaction="{{ route('tickets.th-services-delivery-note') }}">Lieferschein (TH Services)</button>
+                <label class="muted" for="invoice-month" title="Monat, der auf der Monatsrechnung steht. Leer lassen: Abnahmedatum des ersten Tickets.">
+                    Rechnungsmonat
+                    <input type="month" id="invoice-month" name="invoice_month" value="{{ now()->format('Y-m') }}">
+                </label>
                 <button class="btn" type="submit" formaction="{{ route('tickets.monthly-invoice') }}">Monatsrechnung erstellen</button>
                 <button class="btn" type="submit" formaction="{{ route('tickets.th-services-monthly-invoice') }}">Monatsrechnung erstellen (THSS)</button>
             </form>

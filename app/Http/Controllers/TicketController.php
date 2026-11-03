@@ -642,7 +642,24 @@ class TicketController extends Controller
         ]);
     }
 
-    public function generateMonthlyInvoice(Request $request, DolibarrClient $dolibarr, GeiserInvoiceCalculator $invoiceCalculator)
+    /**
+     * Rechnungsmonat einer Monatsrechnung: der im Ticket-Board gewaehlte Monat (Feld "invoice_month",
+     * Format Y-m). Ohne Angabe gilt wie bisher das Abnahmedatum des ersten Tickets der Auswahl.
+     */
+    private function resolveInvoiceMonth(Request $request, $tickets): Carbon
+    {
+        $data = $request->validate([
+            'invoice_month' => ['nullable', 'date_format:Y-m'],
+        ]);
+
+        if (! empty($data['invoice_month'])) {
+            return Carbon::createFromFormat('!Y-m', $data['invoice_month'])->startOfMonth();
+        }
+
+        return $tickets->first()->acceptance_date ?? $tickets->first()->created_at ?? now();
+    }
+
+    public function generateMonthlyInvoice(Request $request,DolibarrClient $dolibarr, GeiserInvoiceCalculator $invoiceCalculator)
     {
         $data = $request->validate([
             'ticket_ids' => ['required', 'array', 'min:1'],
@@ -683,7 +700,7 @@ class TicketController extends Controller
         $hoursLines = collect($invoiceSummary['invoiceLines'])->where('is_nm_service', true)->values();
         $monthlyTotalHours = round((float) $hoursLines->sum('quantity'), 2);
 
-        $monthDate = $tickets->first()->acceptance_date ?? $tickets->first()->created_at ?? now();
+        $monthDate = $this->resolveInvoiceMonth($request, $tickets);
         $monthLabel = $monthDate->copy()->locale('de')->translatedFormat('F Y');
 
         $portalScopes = $tickets->pluck('customerPortalAccount.portal_scope')->filter()->unique();
@@ -708,7 +725,7 @@ class TicketController extends Controller
 
         $fileName = 'monatsrechnung-'.$monthDate->copy()->format('Y-m').'.pdf';
         $hoursFileName = 'stundennachweis-'.$monthDate->copy()->format('Y-m').'.pdf';
-        $invoiceNumber = 'MON-'.$monthDate->copy()->format('Ym').'-'.$tickets->first()->dolibarr_customer_id;
+        $invoiceNumber = 'MON-'.$monthDate->copy()->format('Ym').'-'.$tickets->first()->dolibarr_customer_id.'-'.$sequenceNumber;
 
         $letterhead = [
             'sender' => config('geiser_invoice.sender', []),
@@ -819,7 +836,7 @@ class TicketController extends Controller
         $hoursLines = $invoiceLines->where('is_nm_service', true)->values();
         $monthlyTotalHours = round((float) $hoursLines->sum('quantity'), 2);
 
-        $monthDate = $tickets->first()->acceptance_date ?? $tickets->first()->created_at ?? now();
+        $monthDate = $this->resolveInvoiceMonth($request, $tickets);
         $monthLabel = $monthDate->copy()->locale('de')->translatedFormat('F Y');
 
         $sequenceNumber = 1 + (int) (MonthlyInvoice::query()
